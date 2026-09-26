@@ -1,0 +1,204 @@
+class_name Marble
+extends RigidBody3D
+## Canica controlada por la inclinación del móvil (o flechas del teclado en PC).
+
+@export var roll_force := 20.0
+## Fracción de control que conservas en el aire.
+@export var air_control := 0.3
+## Fracción de control sobre hielo.
+@export var ice_control := 0.3
+## Fuerza con la que la canica acompaña a una plataforma móvil.
+@export var platform_grip := 12.0
+## Grados de inclinación respecto a la posición calibrada para empuje máximo.
+@export var max_tilt_degrees := 20.0
+@export var dead_zone := 0.06
+## Curva de respuesta: 1 = lineal; más alto = los primeros grados empujan poco (control fino)
+## y la fuerza crece rápido al acercarse a max_tilt_degrees.
+@export var response_exponent := 1.5
+## Suavizado del control (más alto = responde más rápido, pero con más temblor).
+@export var input_smoothing := 12.0
+## Filtro del sensor: el de gravedad ya viene filtrado; el acelerómetro recoge el pulso de la mano.
+@export var gravity_filter := 25.0
+@export var accelerometer_filter := 7.0
+@export var max_speed := 12.0
+## Si en tu móvil algún eje va al revés, activa estas opciones.
+@export var invert_x := false
+@export var invert_y := false
+
+var camera: Camera3D
+## Sustituye al sensor en el PC (arrastrar con el ratón).
+var tilt_simulator: TiltSimulator
+var controls_enabled := false
+
+var _neutral := Vector3.ZERO
+var _input := Vector2.ZERO
+var _grounded := false
+var _on_ice := false
+var _ground_velocity := Vector3.ZERO
+var _sensor := Vector3.ZERO
+var _sensor_source := ""
+var _pending_respawn: Variant = null
+var _tween: Tween
+
+
+## Guarda la posición actual del móvil como "plano".
+func _ready() -> void:
+	# Si se duerme, no se despierta cuando desaparece el suelo (trampillas).
+	can_sleep = false
+	add_to_group(Chaser.TARGET_GROUP)
+
+
+func calibrate() -> void:
+	_neutral = _read_sensor()
+
+
+func respawn(pos: Vector3) -> void:
+	# Un RigidBody se teletransporta en _integrate_forces para no pelearse con la física.
+	_stop_tween()
+	freeze = false
+	_pending_respawn = pos
+	sleeping = false
+
+
+## Devuelve la canica a la física y activa los controles (inicio de partida).
+func release() -> void:
+	freeze = false
+	sleeping = false
+	controls_enabled = true
+	calibrate()
+
+
+## Detiene la canica en seco y la saca de la física (fin de partida).
+func stop_in_place() -> void:
+	controls_enabled = false
+	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
+	freeze = true
+
+
+## Lleva la canica al centro de la meta, la eleva y la hace girar.
+func celebrate(center: Vector3) -> void:
+	stop_in_place()
+	_stop_tween()
+	_tween = create_tween()
+	_tween.tween_property(self, "global_position", center + Vector3(0, 0.5, 0), 0.6) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	_tween.tween_property(self, "global_position", center + Vector3(0, 1.1, 0), 0.5) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_tween.parallel().tween_property(self, "rotation:y", rotation.y + TAU * 3.0, 1.5) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+
+func _stop_tween() -> void:
+	if _tween != null and _tween.is_valid():
+		_tween.kill()
+	_tween = null
+
+
+func debug_text() -> String:
+	return "sensor (%s): %s   input: %s   suelo: %s" % [
+		_sensor_source, _read_sensor().snapped(Vector3.ONE * 0.1), _input.snapped(Vector2.ONE * 0.01), _grounded]
+
+
+## Aplica la zona muerta y la curva de respuesta a una inclinación ya normalizada (1 = max_tilt_degrees).
+static func shape_tilt(v: Vector2, dead: float, exponent: float) -> Vector2:
+	var amount := v.length()
+	if amount <= dead:
+		return Vector2.ZERO
+	var t := minf((amount - dead) / (1.0 - dead), 1.0)
+	return v / amount * pow(t, exponent)
+
+
+func _physics_process(delta: float) -> void:
+	_update_sensor(delta)
+	_grounded = _check_grounded()
+	if _grounded and _ground_velocity != Vector3.ZERO:
+		# Una bola sobre una plataforma que acelera rueda hacia atrás y se cae;
+		# en los juegos se "pega" a la plataforma igualando su velocidad.
+		var relative := _ground_velocity - linear_velocity
+		relative.y = 0.0
+		apply_central_force(relative * mass * platform_grip)
+	var target := _read_input() if controls_enabled else Vector2.ZERO
+	_input = _input.lerp(target, 1.0 - exp(-input_smoothing * delta))
+	if _input.length() < 0.01 or camera == null:
+		return
+
+	# Las direcciones son relativas a la cámara: inclinar "hacia delante" mueve la canica hacia arriba en pantalla.
+	var forward := -camera.global_basis.z
+	forward.y = 0.0
+	forward = forward.normalized()
+	var right := camera.global_basis.x
+	right.y = 0.0
+	right = right.normalized()
+	var dir := right * _input.x + forward * _input.y
+
+	var flat_velocity := Vector3(linear_velocity.x, 0.0, linear_velocity.z)
+	if flat_velocity.dot(dir.normalized()) < max_speed:
+		apply_central_force(dir * roll_force * _control_factor())
+
+
+func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
+	if _pending_respawn != null:
+		state.transform = Transform3D(Basis.IDENTITY, _pending_respawn)
+		state.linear_velocity = Vector3.ZERO
+		state.angular_velocity = Vector3.ZERO
+		_pending_respawn = null
+
+
+## Lee el sensor y lo filtra. get_gravity() ya viene filtrado; si el móvil no lo tiene se usa
+## el acelerómetro, que también recoge el temblor de la mano, y se filtra bastante más.
+func _update_sensor(delta: float) -> void:
+	var raw := Input.get_gravity()
+	var rate := gravity_filter
+	_sensor_source = "gravedad"
+	if raw == Vector3.ZERO:
+		raw = Input.get_accelerometer()
+		rate = accelerometer_filter
+		_sensor_source = "acelerómetro"
+	if raw == Vector3.ZERO and tilt_simulator != null:
+		raw = tilt_simulator.gravity
+		rate = gravity_filter
+		_sensor_source = "ratón"
+	if _sensor == Vector3.ZERO:
+		_sensor = raw
+	else:
+		_sensor = _sensor.lerp(raw, 1.0 - exp(-rate * delta))
+
+
+func _read_sensor() -> Vector3:
+	if _sensor == Vector3.ZERO:
+		_update_sensor(0.0)
+	return _sensor
+
+
+func _read_input() -> Vector2:
+	# Teclado para probar en el PC: control directo, sin curva.
+	var keys := Input.get_vector("ui_left", "ui_right", "ui_down", "ui_up")
+	if keys != Vector2.ZERO:
+		return keys
+
+	var sensor := _read_sensor()
+	if sensor == Vector3.ZERO:
+		return Vector2.ZERO
+	var delta := sensor - _neutral
+	var v := Vector2(delta.x, delta.y) / (9.81 * sin(deg_to_rad(max_tilt_degrees)))
+	if invert_x:
+		v.x = -v.x
+	if invert_y:
+		v.y = -v.y
+	return shape_tilt(v, dead_zone, response_exponent)
+
+
+func _control_factor() -> float:
+	if not _grounded:
+		return air_control
+	return ice_control if _on_ice else 1.0
+
+
+func _check_grounded() -> bool:
+	var query := PhysicsRayQueryParameters3D.create(global_position, global_position + Vector3.DOWN * 0.7)
+	query.exclude = [get_rid()]
+	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	var ground: Object = hit.get("collider")
+	_on_ice = ground != null and ground.get_meta("surface", "") == "ice"
+	_ground_velocity = ground.get_meta("velocity", Vector3.ZERO) if ground != null else Vector3.ZERO
+	return not hit.is_empty()

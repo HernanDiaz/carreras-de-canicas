@@ -1,0 +1,68 @@
+; Engine configuration file.
+; Generado a mano para Godot 4.4+. Ábrelo con el editor de Godot.
+
+config_version=5
+
+[application]
+
+config/name="Marble Races"
+config/use_custom_user_dir=true
+config/custom_user_dir_name="Carreras de Canicas"
+config/name_localized={
+"ar": "سباق الكرات",
+"de": "Murmelrennen",
+"en": "Marble Races",
+"es": "Carreras de Canicas",
+"fr": "Course de Billes",
+"hi": "कंचों की दौड़",
+"id": "Balapan Kelereng",
+"in": "Balapan Kelereng",
+"it": "Corsa di Biglie",
+"ja": "ビー玉レース",
+"ko": "구슬 레이스",
+"pt": "Corrida de Bolinhas",
+"pt_BR": "Corrida de Bolinhas",
+"ru": "Гонки шариков",
+"tr": "Bilye Yarışı",
+"vi": "Đua Bi",
+"zh": "弹珠竞速",
+"zh_CN": "弹珠竞速",
+"zh_TW": "彈珠競速"
+}
+run/main_scene="res://scenes/menu.tscn"
+config/quit_on_go_back=false
+config/features=PackedStringArray("4.4", "Mobile")
+config/icon="res://icon.svg"
+
+[autoload]
+
+GameState="*res://scripts/game_state.gd"
+Net="*res://scripts/net.gd"
+
+[display]
+
+window/size/viewport_width=1280
+window/size/viewport_height=720
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=0
+window/energy_saving/keep_screen_on=true
+
+[input_devices]
+
+sensors/enable_accelerometer=true
+sensors/enable_gravity=true
+
+[internationalization]
+
+locale/translations=PackedStringArray("res://locale/translations.en.translation", "res://locale/translations.es.translation", "res://locale/translations.pt_BR.translation", "res://locale/translations.fr.translation", "res://locale/translations.de.translation", "res://locale/translations.it.translation", "res://locale/translations.ru.translation", "res://locale/translations.tr.translation", "res://locale/translations.id.translation", "res://locale/translations.vi.translation", "res://locale/translations.hi.translation", "res://locale/translations.ar.translation", "res://locale/translations.ja.translation", "res://locale/translations.ko.translation", "res://locale/translations.zh_CN.translation")
+locale/fallback="en"
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+
+[rendering]
+
+renderer/rendering_method="mobile"
+textures/vram_compression/import_etc2_astc=true

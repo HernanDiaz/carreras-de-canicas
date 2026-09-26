@@ -1,0 +1,14 @@
+# Caché y archivos generados por Godot
+.godot/
+/android/
+
+# Compilaciones (APK de Android y firmas)
+build/
+*.apk
+*.aab
+*.idsig
+
+# Credenciales de exportación (claves de firma)
+export_credentials.cfg
+*.keystore
+*.jks

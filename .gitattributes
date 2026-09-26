@@ -1,0 +1,4 @@
+# Godot usa finales de línea LF; los .bat necesitan CRLF para Windows
+* text=auto eol=lf
+*.bat text eol=crlf
+*.translation binary
