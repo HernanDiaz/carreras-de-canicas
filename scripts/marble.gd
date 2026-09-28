@@ -180,12 +180,23 @@ func _read_input() -> Vector2:
 	if sensor == Vector3.ZERO:
 		return Vector2.ZERO
 	var delta := sensor - _neutral
-	var v := Vector2(delta.x, delta.y) / (9.81 * sin(deg_to_rad(max_tilt_degrees)))
+	var v := _to_screen_axes(Vector2(delta.x, delta.y)) / (9.81 * sin(deg_to_rad(max_tilt_degrees)))
 	if invert_x:
 		v.x = -v.x
 	if invert_y:
 		v.y = -v.y
 	return shape_tilt(v, dead_zone, response_exponent)
+
+
+## En Android, Godot ya entrega el sensor con los ejes girados según la orientación de la
+## pantalla. En iOS los entrega con los ejes del móvil en vertical, así que en horizontal
+## hay que girarlos 90° (en un sentido u otro según hacia qué lado esté girado el móvil).
+func _to_screen_axes(v: Vector2) -> Vector2:
+	if OS.get_name() != "iOS":
+		return v
+	if DisplayServer.screen_get_orientation() == DisplayServer.SCREEN_REVERSE_LANDSCAPE:
+		return Vector2(-v.y, v.x)
+	return Vector2(v.y, -v.x)
 
 
 func _control_factor() -> float:
