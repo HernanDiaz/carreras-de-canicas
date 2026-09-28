@@ -9,7 +9,8 @@ const OUT_DIR := "res://build/screenshots"
 ## Tamaños exigidos por App Store Connect (horizontal). `ui` es el tamaño virtual de la
 ## interfaz: 720 de alto como en el juego, y el ancho según la proporción de la pantalla.
 const DEVICES := {
-	"iphone69": {size = Vector2i(2868, 1320), ui = Vector2i(1564, 720)},
+	# App Store Connect pide la pantalla de 6,5" (las demás se generan a partir de esta)
+	"iphone65": {size = Vector2i(2778, 1284), ui = Vector2i(1558, 720)},
 	"ipad13": {size = Vector2i(2752, 2064), ui = Vector2i(960, 720)},
 }
 
@@ -25,7 +26,7 @@ const CAPTIONS := {
 		"Inclina el móvil para rodar",
 		"Rampas, puentes y pistas con trampa",
 		"Esquiva las canicas de acero",
-		"Calcula el momento para pasar los péndulos",
+		"Esquiva los péndulos a tiempo",
 		"Echa carreras con tus amigos por Wi‑Fi",
 	],
 }
@@ -93,7 +94,7 @@ func _next() -> void:
 		root.get_node("GameState").current_level = shot.level
 		_scene = load("res://scenes/game.tscn").instantiate()
 	_viewport.add_child(_scene)
-	_add_caption(CAPTIONS[job.locale][job.index])
+	_add_caption(CAPTIONS[job.locale][job.index], device.ui.x)
 	_frame = 0
 	_placed = false
 
@@ -155,7 +156,7 @@ func _hide_menu_extras() -> void:
 
 
 ## Franja inferior con el texto de la captura.
-func _add_caption(text: String) -> void:
+func _add_caption(text: String, ui_width: int) -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 50
 	var band := ColorRect.new()
@@ -172,7 +173,9 @@ func _add_caption(text: String) -> void:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.anchor_right = 1.0
 	label.anchor_bottom = 1.0
-	label.add_theme_font_size_override("font_size", 50)
+	# En iPad la interfaz es más estrecha (960 frente a 1564): letra más pequeña para que quepa.
+	label.add_theme_font_size_override("font_size", 50 if ui_width > 1200 else 38)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_color_override("font_color", Color(0.45, 1.0, 0.9))
 	label.add_theme_color_override("font_outline_color", Color(0.02, 0.0, 0.06))
 	label.add_theme_constant_override("outline_size", 10)
