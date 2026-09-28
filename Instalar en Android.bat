@@ -8,7 +8,7 @@ echo Compilando APK...
 "%GODOT%" --headless --path . --export-debug "Android" build\CarrerasDeCanicas.apk >build\export.log 2>&1 || goto error
 echo Instalando en el movil...
 "%ADB%" -d install -r build\CarrerasDeCanicas.apk || goto error
-"%ADB%" -d shell monkey -p com.marblemadness2026.game -c android.intent.category.LAUNCHER 1 >nul 2>&1
+"%ADB%" -d shell monkey -p com.hernandiaz.carrerasdecanicas -c android.intent.category.LAUNCHER 1 >nul 2>&1
 echo Listo: el juego se esta abriendo en el movil.
 pause
 exit /b 0

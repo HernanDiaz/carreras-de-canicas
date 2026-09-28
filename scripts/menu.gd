@@ -112,7 +112,9 @@ func _build_main() -> Control:
 	box.add_child(UI.button(tr("MENU_PLAY"), func() -> void: _show("levels")))
 	box.add_child(UI.button(tr("MENU_WIFI"), func() -> void: _show("multi")))
 	box.add_child(UI.button(tr("MENU_OPTIONS"), func() -> void: _show("options")))
-	box.add_child(UI.button(tr("MENU_QUIT"), func() -> void: get_tree().quit()))
+	# En iOS las apps no pueden cerrarse solas (norma de la App Store): sin botón Salir.
+	if OS.get_name() != "iOS":
+		box.add_child(UI.button(tr("MENU_QUIT"), func() -> void: get_tree().quit()))
 	box.add_child(UI.spacer(8))
 	var lang := UI.button(_language_text(), _on_language_pressed, 380.0)
 	lang.theme_type_variation = UI.SECONDARY

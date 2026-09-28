@@ -100,9 +100,48 @@ También puedes copiar `build/CarrerasDeCanicas.apk` al móvil e instalarlo a ma
 
 **Emulador:** el emulador de Android Studio necesita aceleración gráfica por hardware. Con gráficos por software (SwiftShader) Godot no encuentra Vulkan, pasa a OpenGL y la pantalla se queda en blanco. En el AVD, configura *Graphics: Hardware*.
 
-**Identificador de la app:** `com.marblemadness2026.game`. Si vas a publicar en Google Play, cámbialo antes de la primera publicación en `export_presets.cfg` (`package/unique_name`); después ya no se puede cambiar.
+**Identificador de la app:** `com.hernandiaz.carrerasdecanicas`, el mismo en Android e iOS. Una vez publicada en Google Play o en la App Store, ya no se puede cambiar.
 
 El botón "atrás" de Android pausa la partida y, en el menú, vuelve a la pantalla anterior.
+
+## iPhone / iPad (TestFlight, sin Mac)
+
+El juego se compila para iOS en un Mac de GitHub (GitHub Actions) y se sube a **TestFlight**; desde ahí se instala en el iPhone. Para configurarlo (solo la primera vez):
+
+1. **Apple Developer** (99 USD/año): date de alta en developer.apple.com o con la app *Apple Developer* del iPhone.
+2. **Crear la app** en [App Store Connect](https://appstoreconnect.apple.com) → *Apps* → **+** → *Nueva app*:
+   - Plataforma iOS, nombre "Carreras de Canicas" e idioma principal español.
+   - ID de paquete (*Bundle ID*): `com.hernandiaz.carrerasdecanicas`. Si no aparece en la lista, créalo antes en developer.apple.com → *Identifiers* → **+** → *App IDs*.
+   - SKU: cualquiera, por ejemplo `carreras-de-canicas`.
+3. **Clave de API:** App Store Connect → *Usuarios y acceso* → *Integraciones* → *App Store Connect API* → **+**.
+   - Rol **Admin**: lo necesita la firma automática para crear el certificado de distribución.
+   - Descarga el archivo `AuthKey_XXXXXXXX.p8`. Solo se puede descargar una vez.
+   - Apunta el **Key ID** y el **Issuer ID** que aparecen en esa página.
+4. **Team ID:** developer.apple.com → *Account* → *Membership details* → *Team ID* (10 caracteres).
+5. **Secretos en GitHub:** en el repositorio, *Settings* → *Secrets and variables* → *Actions* → *New repository secret*. Crea estos cuatro:
+
+   | Nombre | Valor |
+   |---|---|
+   | `APPLE_TEAM_ID` | el Team ID |
+   | `ASC_KEY_ID` | el Key ID |
+   | `ASC_ISSUER_ID` | el Issuer ID |
+   | `ASC_KEY_P8` | el contenido completo del `.p8` (ábrelo con el Bloc de notas y copia todo, incluidas las líneas `BEGIN`/`END`) |
+
+Para compilar una versión: GitHub → *Actions* → **iOS (TestFlight)** → *Run workflow*. Tarda unos 20 minutos. Cuando termina, aparece en App Store Connect → *TestFlight*. Añádete como probador interno e instálala con la app **TestFlight** del iPhone.
+
+Notas:
+- **Minutos de GitHub:** en un repositorio privado, las máquinas Mac gastan minutos del plan x10. El plan gratuito da para unas 10 compilaciones al mes.
+- **Búsqueda de partidas en iPhone:** "Unirse a …" necesita que Apple conceda el permiso *multicast* (`com.apple.developer.networking.multicast`), que se pide en developer.apple.com/contact/request/networking-multicast. Mientras tanto funciona **Unirse por IP**. iOS pedirá permiso de "red local" la primera vez.
+- **Botón Salir:** en iOS no aparece, porque las apps no pueden cerrarse solas.
+- **Ajustes de iOS:** están en el preset "iOS" de `export_presets.cfg`. El Team ID no se guarda en el repositorio: el workflow lo rellena desde el secreto.
+
+## Icono
+
+El icono se genera por código: `python tools/make_icon.py` crea los SVG en `icon/` y `godot --headless --path . -s res://tools/render_icons.gd` los convierte a PNG. Salen:
+- **Android:** el icono clásico de 192 px y el adaptable (fondo, primer plano y versión monocroma).
+- **iOS / App Store:** 1024 px, sin transparencias.
+
+Si cambias el diseño, vuelve a ejecutar los dos comandos.
 
 ## Carrera Wi‑Fi (multijugador local)
 

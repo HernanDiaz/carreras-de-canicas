@@ -32,7 +32,7 @@ config/name_localized={
 run/main_scene="res://scenes/menu.tscn"
 config/quit_on_go_back=false
 config/features=PackedStringArray("4.4", "Mobile")
-config/icon="res://icon.svg"
+config/icon="res://icon/icon_full.svg"
 
 [autoload]
 
