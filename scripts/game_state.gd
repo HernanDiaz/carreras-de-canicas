@@ -14,6 +14,7 @@ const LEVELS := [
 	{name = "LEVEL_4", script = "res://levels/level_04.gd", time = 75.0},
 	{name = "LEVEL_5", script = "res://levels/level_05.gd", time = 80.0},
 	{name = "LEVEL_6", script = "res://levels/level_06.gd", time = 100.0},
+	{name = "LEVEL_7", script = "res://levels/level_07.gd", time = 120.0},
 ]
 
 ## Idiomas disponibles (columnas de locale/translations.csv). "" = el del sistema.
@@ -137,6 +138,9 @@ func load_data() -> void:
 	if cfg.has_section("records"):
 		for key in cfg.get_section_keys("records"):
 			best_times[int(key)] = float(cfg.get_value("records", key))
+	# Si una actualización añade niveles, el siguiente al último superado queda desbloqueado.
+	for index in best_times:
+		unlocked = clampi(maxi(unlocked, index + 2), 1, LEVELS.size())
 	tilt_degrees = cfg.get_value("opciones", "inclinacion", tilt_degrees)
 	tilt_custom = cfg.get_value("opciones", "inclinacion_elegida", false)
 	invert_x = cfg.get_value("opciones", "invertir_x", invert_x)

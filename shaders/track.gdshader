@@ -15,6 +15,8 @@ uniform float edge_width = 0.06;
 uniform float edge_glow = 0.8;
 // Si está activo, el patrón también se pinta en los laterales.
 uniform bool pattern_on_sides = false;
+// Velocidad a la que se desplaza el patrón superior hacia -z local (cintas transportadoras).
+uniform float scroll_speed = 0.0;
 
 varying vec3 local_pos;
 varying vec3 local_normal;
@@ -59,7 +61,7 @@ void fragment() {
 	vec2 face_uv;
 	if (n.y > 0.5) {
 		edge = min(d.x, d.z);
-		face_uv = p.xz;
+		face_uv = p.xz + vec2(0.0, TIME * scroll_speed);
 	} else if (n.x > 0.5) {
 		edge = min(d.y, d.z);
 		face_uv = p.zy;

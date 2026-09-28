@@ -35,6 +35,9 @@ var _input := Vector2.ZERO
 var _grounded := false
 var _on_ice := false
 var _ground_velocity := Vector3.ZERO
+## Aceleración que da el suelo (cintas transportadoras).
+var _ground_push := Vector3.ZERO
+var _ground_grip := 0.0
 var _sensor := Vector3.ZERO
 var _sensor_source := ""
 var _pending_respawn: Variant = null
@@ -55,6 +58,7 @@ func calibrate() -> void:
 func respawn(pos: Vector3) -> void:
 	# Un RigidBody se teletransporta en _integrate_forces para no pelearse con la física.
 	_stop_tween()
+	visible = true
 	freeze = false
 	_pending_respawn = pos
 	sleeping = false
@@ -73,6 +77,13 @@ func stop_in_place() -> void:
 	controls_enabled = false
 	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
 	freeze = true
+
+
+## Un gusano se ha comido la canica: desaparece y se queda quieta hasta reaparecer.
+func swallow() -> void:
+	freeze_mode = RigidBody3D.FREEZE_MODE_KINEMATIC
+	freeze = true
+	visible = false
 
 
 ## Lleva la canica al centro de la meta, la eleva y la hace girar.
@@ -116,7 +127,9 @@ func _physics_process(delta: float) -> void:
 		# en los juegos se "pega" a la plataforma igualando su velocidad.
 		var relative := _ground_velocity - linear_velocity
 		relative.y = 0.0
-		apply_central_force(relative * mass * platform_grip)
+		apply_central_force(relative * mass * _ground_grip)
+	if _grounded and _ground_push != Vector3.ZERO:
+		apply_central_force(_ground_push * mass)
 	var target := _read_input() if controls_enabled else Vector2.ZERO
 	_input = _input.lerp(target, 1.0 - exp(-input_smoothing * delta))
 	if _input.length() < 0.01 or camera == null:
@@ -212,4 +225,9 @@ func _check_grounded() -> bool:
 	var ground: Object = hit.get("collider")
 	_on_ice = ground != null and ground.get_meta("surface", "") == "ice"
 	_ground_velocity = ground.get_meta("velocity", Vector3.ZERO) if ground != null else Vector3.ZERO
+	# Piezas que giran: la velocidad del suelo depende de dónde esté la canica.
+	if ground != null and ground.has_meta("velocity_at"):
+		_ground_velocity = (ground.get_meta("velocity_at") as Callable).call(global_position)
+	_ground_push = ground.get_meta("push", Vector3.ZERO) if ground != null else Vector3.ZERO
+	_ground_grip = ground.get_meta("grip", platform_grip) if ground != null else platform_grip
 	return not hit.is_empty()

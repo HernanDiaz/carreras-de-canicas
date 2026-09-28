@@ -6,6 +6,9 @@ extends Node3D
 signal checkpoint_reached(position: Vector3)
 ## La canica ha tocado algo mortal (ácido...). `reason` es la clave de traducción del aviso.
 signal marble_killed(reason: String)
+## Tu canica está atrapada (se la ha comido un gusano): queda fuera de juego hasta que
+## llegue marble_killed y reaparezca.
+signal marble_caught(reason: String)
 ## Tu canica ha pisado la baldosa `index` (en carrera se reenvía a los demás jugadores).
 signal crumble_triggered(index: int)
 
@@ -25,6 +28,12 @@ const S_MOVER := {pattern = 0, a = Color(0.6, 0.92, 0.62), b = Color(0.42, 0.76,
 const S_CRUMBLE := {pattern = 0, a = Color(0.78, 0.62, 0.5), b = Color(0.64, 0.5, 0.4), side = Color(0.4, 0.28, 0.22), edge = Color(1.0, 0.7, 0.5), tile_size = 0.6}
 const S_TRAPDOOR := {pattern = 2, a = Color(0.98, 0.82, 0.25), b = Color(0.2, 0.17, 0.14), side = Color(0.45, 0.35, 0.15), edge = Color(1.0, 0.9, 0.4)}
 const S_METAL := {pattern = 0, a = Color(0.6, 0.62, 0.7), b = Color(0.52, 0.54, 0.62), side = Color(0.3, 0.32, 0.4), edge = Color(0.85, 0.9, 1.0)}
+const S_CONVEYOR := {pattern = 1, a = Color(0.32, 0.34, 0.4), b = Color(0.98, 0.62, 0.15), side = Color(0.2, 0.2, 0.26), edge = Color(1.0, 0.75, 0.3), tile_size = 0.8}
+const S_CRUSHER := {pattern = 2, a = Color(0.95, 0.75, 0.15), b = Color(0.16, 0.14, 0.16), side = Color(0.4, 0.3, 0.1), edge = Color(1.0, 0.85, 0.35), pattern_on_sides = true}
+const S_TURNTABLE := {pattern = 0, a = Color(0.55, 0.85, 0.95), b = Color(0.35, 0.6, 0.8), side = Color(0.18, 0.3, 0.45), edge = Color(0.6, 0.95, 1.0), tile_size = 1.2}
+const S_HILL := {pattern = 0, a = Color(0.62, 0.88, 0.66), b = Color(0.45, 0.74, 0.55), side = Color(0.22, 0.4, 0.32), edge = Color(0.7, 1.0, 0.75), tile_size = 1.2}
+const S_CHUTE := {pattern = 0, a = Color(0.98, 0.78, 0.4), b = Color(0.95, 0.55, 0.35), side = Color(0.5, 0.3, 0.2), edge = Color(1.0, 0.85, 0.5), tile_size = 1.0}
+const C_CHUTE_WALL := Color(0.5, 0.85, 1.0, 0.35)
 const S_BOOST := {pattern = 1, a = Color(0.35, 1.0, 1.0), b = Color(0.1, 0.35, 0.55), side = Color(0.1, 0.3, 0.4), edge = Color(0.4, 1.0, 1.0), tile_size = 0.45}
 
 const C_BUMPER := Color(1.0, 0.35, 0.75)
@@ -154,6 +163,303 @@ func add_moving_platform(from_top: Vector3, to_top: Vector3, size: Vector3, peri
 		last.pos = pos
 		last.t = t
 	)
+
+
+## Cinta transportadora de `from` a `to` (centros de su cara superior, a la misma altura).
+## Empuja la canica en ese sentido con la aceleración `strength` (la canica acelera con 20).
+func add_conveyor(from: Vector3, to: Vector3, width: float, strength: float) -> StaticBody3D:
+	var dir := (to - from).normalized()
+	var length := from.distance_to(to)
+	var body := StaticBody3D.new()
+	# looking_at deja el -z local mirando hacia `dir`: así las flechas apuntan hacia donde empuja.
+	body.transform = Transform3D(Basis.looking_at(dir), (from + to) / 2.0 - Vector3(0, 0.5, 0))
+	var style := S_CONVEYOR.duplicate()
+	style.scroll = strength * 0.25
+	_add_box(body, Vector3(width, 1.0, length), style)
+	body.set_meta("push", dir * strength)
+	add_child(body)
+	lowest_y = minf(lowest_y, from.y)
+
+	# Rodillos en los extremos (decorativos)
+	var roller := CylinderMesh.new()
+	roller.top_radius = 0.35
+	roller.bottom_radius = 0.35
+	roller.height = width + 0.2
+	roller.material = _material(Color(0.5, 0.5, 0.58))
+	for end in [-1.0, 1.0]:
+		var instance := _add_mesh(body, roller, Vector3(0, 0.15, end * length / 2.0))
+		instance.basis = Basis(Vector3.BACK, PI / 2.0)
+	return body
+
+
+## Prensa que cae desde arriba sobre la pista cada `period` segundos. Tiembla antes de caer;
+## si te pilla debajo, reapareces. Mientras está abajo tapa el paso.
+func add_crusher(floor_pos: Vector3, size: Vector2, period: float, phase := 0.0) -> void:
+	var raised := 3.0
+	var thickness := 1.2
+	var box := Vector3(size.x, thickness, size.y)
+
+	# Pórtico del que cuelga (solo decorado)
+	var steel := _material(Color(0.42, 0.44, 0.52))
+	steel.metallic = 0.5
+	steel.roughness = 0.4
+	var pillar := BoxMesh.new()
+	pillar.size = Vector3(0.4, 8.0, 0.4)
+	pillar.material = steel
+	for side in [-1.0, 1.0]:
+		_add_mesh(self, pillar, floor_pos + Vector3(side * (size.x / 2.0 + 0.45), 1.5, 0))
+	var beam := BoxMesh.new()
+	beam.size = Vector3(size.x + 1.3, 0.5, 0.6)
+	beam.material = steel
+	_add_mesh(self, beam, floor_pos + Vector3(0, 5.5, 0))
+
+	# Marca en el suelo: franjas fijas y un brillo rojo que avisa antes de caer
+	var mark := BoxMesh.new()
+	mark.size = Vector3(size.x, 0.02, size.y)
+	mark.material = _track_material(mark.size, S_HAZARD)
+	_add_mesh(self, mark, floor_pos + Vector3(0, 0.01, 0))
+	var glow_material := _material(Color(1.0, 0.2, 0.15), 3.0)
+	var glow := BoxMesh.new()
+	glow.size = Vector3(size.x, 0.03, size.y)
+	glow.material = glow_material
+	var glow_instance := _add_mesh(self, glow, floor_pos + Vector3(0, 0.025, 0))
+	glow_instance.visible = false
+
+	var body := AnimatableBody3D.new()
+	var down := floor_pos + Vector3(0, thickness / 2.0 + 0.02, 0)
+	body.position = down + Vector3(0, raised, 0)
+	_add_box(body, box, S_CRUSHER)
+	var rod := CylinderMesh.new()
+	rod.top_radius = 0.18
+	rod.bottom_radius = 0.18
+	rod.height = 4.0
+	rod.material = steel
+	_add_mesh(body, rod, Vector3(0, thickness / 2.0 + 2.0, 0))
+	add_child(body)
+
+	# Zona de aplastamiento: el hueco bajo la prensa
+	var danger := _add_area(floor_pos + Vector3(0, 0.5, 0), Vector3(size.x - 0.4, 1.0, size.y - 0.4))
+
+	_animators.append(func(t: float) -> void:
+		# 50 % arriba, 12 % temblando, 6 % caída, 12 % abajo, 20 % subida
+		var p := fposmod(t / period + phase, 1.0)
+		var k := 1.0
+		var jitter := Vector3.ZERO
+		if p < 0.5:
+			k = 1.0
+		elif p < 0.62:
+			jitter = Vector3(sin(t * 70.0), 0, cos(t * 83.0)) * 0.05
+		elif p < 0.68:
+			var f := (p - 0.62) / 0.06
+			k = 1.0 - f * f
+		elif p < 0.8:
+			k = 0.0
+		else:
+			k = smoothstep(0.8, 1.0, p)
+		body.position = down + Vector3(0, raised * k, 0) + jitter
+		var warning := p >= 0.5 and p < 0.68
+		glow_instance.visible = warning and fmod(t * 8.0, 1.0) < 0.5
+		# Solo aplasta mientras cae o está abajo, no al subir.
+		if p >= 0.62 and p < 0.8 and raised * k < 0.9 and marble != null 				and danger.overlaps_body(marble):
+			marble_killed.emit("CRUSHED")
+	)
+
+
+## Disco giratorio (centro de su cara superior). La canica gira con él. Con `bars` > 0
+## lleva barreras bajas hacia el borde que barren la superficie; el centro queda libre.
+func add_turntable(top: Vector3, radius: float, degrees_per_second: float, bars := 0) -> void:
+	var height := 1.0
+	var body := AnimatableBody3D.new()
+	body.position = top - Vector3(0, height / 2.0, 0)
+	var shape := CylinderShape3D.new()
+	shape.radius = radius
+	shape.height = height
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	body.add_child(collision)
+	var disc := CylinderMesh.new()
+	disc.top_radius = radius
+	disc.bottom_radius = radius
+	disc.height = height
+	disc.radial_segments = 48
+	disc.material = _track_material(Vector3(radius * 2.0, height, radius * 2.0), S_TURNTABLE)
+	_add_mesh(body, disc)
+	var rim := TorusMesh.new()
+	rim.inner_radius = radius - 0.08
+	rim.outer_radius = radius + 0.04
+	rim.material = _material(S_TURNTABLE.edge, 2.5)
+	_add_mesh(body, rim, Vector3(0, height / 2.0, 0))
+
+	var style := S_HAZARD.duplicate()
+	style.pattern_on_sides = true
+	var bar_start := 1.5
+	var bar_length := radius - bar_start - 0.4
+	for i in bars:
+		var angle := TAU * i / bars
+		var out := Vector3(cos(angle), 0, sin(angle))
+		var xform := Transform3D(Basis(Vector3.UP, -angle), out * (bar_start + bar_length / 2.0) + Vector3(0, height / 2.0 + 0.3, 0))
+		_add_box(body, Vector3(bar_length, 0.6, 0.35), style, xform)
+	add_child(body)
+	lowest_y = minf(lowest_y, top.y)
+
+	var speed := deg_to_rad(degrees_per_second)
+	# Velocidad del suelo en un punto: la canica la usa para girar con el disco (ver marble.gd).
+	# Con menos agarre que una plataforma móvil, para poder cruzarlo a buen ritmo.
+	body.set_meta("grip", 4.0)
+	body.set_meta("velocity_at", func(pos: Vector3) -> Vector3:
+		var r := pos - top
+		return Vector3(speed * r.z, 0, -speed * r.x)
+	)
+	_animators.append(func(t: float) -> void:
+		body.rotation.y = speed * t
+	)
+
+
+## Cuesta con baches entre `from` y `to` (centros a nivel del suelo): `bumps` jorobas de
+## `height` de alto. A buena velocidad, cada joroba te hace saltar.
+func add_waves(from: Vector3, to: Vector3, width: float, bumps: int, height: float, style: Dictionary = S_HILL) -> void:
+	var up := Vector3.UP * height
+	var last := from
+	for i in range(1, bumps * 2 + 1):
+		var point := from.lerp(to, float(i) / (bumps * 2)) + (up if i % 2 == 1 else Vector3.ZERO)
+		add_ramp(last, point, width, style, 0.8)
+		last = point
+
+
+## Valle en forma de V entre `from` y `to` (centros de los bordes superiores): las dos laderas
+## bajan `depth` hasta el surco del centro, así que la canica tiende a rodar por el fondo.
+## El fondo del valle queda `depth` por debajo de `from` y `to`.
+func add_valley(from: Vector3, to: Vector3, width: float, depth: float, style: Dictionary = S_HILL) -> void:
+	var forward := (to - from).normalized()
+	var right := forward.cross(Vector3.UP).normalized()
+	var up := right.cross(forward).normalized()
+	var length := from.distance_to(to)
+	var bottom := (from + to) / 2.0 - up * depth
+	var thickness := 0.8
+	for side in [-1.0, 1.0]:
+		var across: Vector3 = right * side * width / 2.0 + up * depth
+		var x := across.normalized()
+		var z := -forward
+		var y := z.cross(x)
+		if y.y < 0.0:
+			x = -x
+			y = z.cross(x)
+		var body := StaticBody3D.new()
+		body.transform = Transform3D(Basis(x, y, z), bottom + across / 2.0 - y * thickness / 2.0)
+		_add_box(body, Vector3(across.length(), thickness, length), style)
+		add_child(body)
+	lowest_y = minf(lowest_y, minf(from.y, to.y) - depth)
+
+
+## Tobogán: canal con paredes que sigue la línea `points` (centro del suelo).
+func add_chute(points: PackedVector3Array, width: float, wall_height := 1.0) -> void:
+	var lefts: Array[Vector3] = []
+	var rights: Array[Vector3] = []
+	for i in points.size():
+		var tangent := points[mini(i + 1, points.size() - 1)] - points[maxi(i - 1, 0)]
+		tangent.y = 0.0
+		var side := tangent.normalized().cross(Vector3.UP).normalized()
+		lefts.append(points[i] - side * width / 2.0)
+		rights.append(points[i] + side * width / 2.0)
+
+	var floor_tool := SurfaceTool.new()
+	floor_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var wall_tool := SurfaceTool.new()
+	wall_tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var faces := PackedVector3Array()
+	var up := Vector3.UP * wall_height
+	for i in points.size() - 1:
+		var l0 := lefts[i]
+		var l1 := lefts[i + 1]
+		var r0 := rights[i]
+		var r1 := rights[i + 1]
+		# Suelo: en Godot las caras visibles van en sentido horario vistas desde fuera.
+		var n := (r0 - l0).cross(l1 - l0).normalized()
+		if n.y < 0.0:
+			n = -n
+		_add_quad(floor_tool, faces, [l0, l1, r1, r0], n)
+		_add_quad(wall_tool, faces, [l0, l0 + up, l1 + up, l1], (r0 - l0).normalized())
+		_add_quad(wall_tool, faces, [r0, r1, r1 + up, r0 + up], (l0 - r0).normalized())
+
+	var body := StaticBody3D.new()
+	var shape := ConcavePolygonShape3D.new()
+	shape.set_faces(faces)
+	shape.backface_collision = true
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	body.add_child(collision)
+
+	floor_tool.set_material(_track_material(Vector3.ONE * 1000.0, S_CHUTE))
+	var floor_instance := MeshInstance3D.new()
+	floor_instance.mesh = floor_tool.commit()
+	body.add_child(floor_instance)
+
+	var glass := StandardMaterial3D.new()
+	glass.albedo_color = C_CHUTE_WALL
+	glass.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glass.cull_mode = BaseMaterial3D.CULL_DISABLED
+	glass.emission_enabled = true
+	glass.emission = Color(C_CHUTE_WALL, 1.0)
+	glass.emission_energy_multiplier = 0.4
+	glass.roughness = 0.2
+	wall_tool.set_material(glass)
+	var wall_instance := MeshInstance3D.new()
+	wall_instance.mesh = wall_tool.commit()
+	wall_instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	body.add_child(wall_instance)
+	add_child(body)
+	for point in points:
+		lowest_y = minf(lowest_y, point.y)
+
+
+## Tobogán en espiral que empieza en `entry` (borde de una plataforma, a ras de suelo)
+## saliendo hacia `dir`. Recorre `lead` en recto, da `turns` vueltas de radio `radius` girando
+## a la derecha (o a la izquierda) mientras baja `drop`, y sale en recto `lead` otra vez.
+## Devuelve {position, direction}: dónde acaba (a ras de suelo) y hacia dónde sale.
+func add_spiral(entry: Vector3, dir: Vector3, radius: float, turns: float, drop: float, turn_right := true, lead := 3.0, width := 2.6) -> Dictionary:
+	dir = dir.normalized()
+	var side := dir.cross(Vector3.UP).normalized() * (1.0 if turn_right else -1.0)
+	var start := entry + dir * lead
+	var axis := start + side * radius
+	var total := turns * TAU
+	var steps := maxi(int(turns * 40.0), 8)
+	var points := PackedVector3Array([entry])
+	for i in steps + 1:
+		var angle := total * i / steps
+		var offset := (-side * cos(angle) + dir * sin(angle)) * radius
+		points.append(axis + offset + Vector3.DOWN * drop * i / steps)
+	var out_dir := (side * sin(total) + dir * cos(total)).normalized()
+	var finish := points[points.size() - 1] + out_dir * lead
+	points.append(finish)
+	add_chute(points, width)
+	return {position = finish, direction = out_dir}
+
+
+## Dos triángulos con la misma normal; también los añade a `faces` (colisión).
+func _add_quad(tool: SurfaceTool, faces: PackedVector3Array, corners: Array, normal: Vector3) -> void:
+	for index in [0, 1, 2, 0, 2, 3]:
+		tool.set_normal(normal)
+		tool.add_vertex(corners[index])
+		faces.append(corners[index])
+
+
+## Gusano que vive en un agujero (`hole`, a ras de suelo) y caza en la plataforma cuyo
+## centro superior es `area_top` y su tamaño `area_size` (x, z).
+func add_worm(hole: Vector3, area_top: Vector3, area_size: Vector2, speed := 3.2) -> void:
+	var worm := Worm.new()
+	worm.hole = hole
+	worm.roam = Rect2(area_top.x - area_size.x / 2.0, area_top.z - area_size.y / 2.0, area_size.x, area_size.y)
+	worm.speed = speed
+	worm.ate.connect(func(target: Node3D) -> void:
+		if target == marble:
+			marble.swallow()
+			marble_caught.emit("EATEN")
+	)
+	worm.swallowed.connect(func(target: Node3D) -> void:
+		if target == marble:
+			marble_killed.emit("EATEN")
+	)
+	add_child(worm)
 
 
 ## Baldosa que tiembla al pisarla, se cae y reaparece al rato.
@@ -669,6 +975,7 @@ func _track_material(size: Vector3, style: Dictionary) -> ShaderMaterial:
 	material.set_shader_parameter("tile_size", style.get("tile_size", 1.0))
 	material.set_shader_parameter("edge_width", style.get("edge_width", 0.06))
 	material.set_shader_parameter("pattern_on_sides", style.get("pattern_on_sides", false))
+	material.set_shader_parameter("scroll_speed", style.get("scroll", 0.0))
 	return material
 
 

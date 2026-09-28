@@ -49,10 +49,19 @@ var _standings_label: Label
 @onready var pause_button: Button = $HUD/Root/PauseButton
 @onready var calibrate_button: Button = $HUD/Root/CalibrateButton
 @onready var tilt_simulator: TiltSimulator = $HUD/Root/TiltSimulator
+@onready var world_environment: WorldEnvironment = $WorldEnvironment
+
+## Altura de la niebla bajo la canica (en la salida queda como antes, en -3.5): lo que queda
+## muy por debajo se funde con el fondo.
+const FOG_BELOW := 4.5
+var _environment: Environment
 
 
 func _ready() -> void:
 	hud.theme = UI.make_theme()
+	# Copia propia: la altura de la niebla cambia durante la partida (el menú usa la misma).
+	_environment = world_environment.environment.duplicate()
+	world_environment.environment = _environment
 	UI.fit_safe_area(hud)
 	race = Net.in_race
 	var info: Dictionary = GameState.LEVELS[GameState.current_level]
@@ -63,6 +72,11 @@ func _ready() -> void:
 	level.build()
 	level.checkpoint_reached.connect(func(pos: Vector3) -> void: respawn_point = pos)
 	level.marble_killed.connect(_on_marble_killed)
+	level.marble_caught.connect(func(reason: String) -> void:
+		if state == State.PLAYING:
+			_goal_hold = 0.0
+			_show_message(tr(reason), 3.0)
+	)
 
 	time_left = info.time
 	level_label.text = tr("HUD_RACE_FMT" if race else "HUD_LEVEL_FMT") % [GameState.current_level + 1, tr(info.name)]
@@ -91,6 +105,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	# La niebla baja contigo en los niveles que descienden mucho.
+	var fog_target := camera.target.global_position.y - FOG_BELOW if camera.target != null else -FOG_BELOW
+	_environment.fog_height = lerpf(_environment.fog_height, fog_target, 1.0 - exp(-2.0 * delta))
 	match state:
 		State.WAITING:
 			_show_message(tr("WAITING_OTHERS"), 0.2)
