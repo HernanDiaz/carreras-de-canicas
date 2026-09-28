@@ -44,6 +44,19 @@ jobs:
           done
           exit $missing
 
+      # Godot 4.7 se compila con el SDK de iOS 26 (y Apple exige ese SDK para subir a la App Store),
+      # así que hace falta Xcode 26 o posterior. Se elige el más nuevo que tenga la máquina.
+      - name: Elegir Xcode
+        run: |
+          echo "Versiones de Xcode instaladas:"; ls -d /Applications/Xcode*.app
+          xcode=$(ls -d /Applications/Xcode_2[6-9]*.app 2>/dev/null | sort -V | tail -1)
+          if [ -z "$xcode" ]; then
+            echo "::error::Esta máquina no tiene Xcode 26 o posterior (ver la lista de arriba)"
+            exit 1
+          fi
+          sudo xcode-select -s "$xcode/Contents/Developer"
+          xcodebuild -version
+
       # Godot y sus plantillas (1,2 GB) se guardan en caché para no descargarlos en cada compilación.
       - name: Caché de Godot
         id: godot-cache
