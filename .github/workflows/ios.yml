@@ -7,8 +7,9 @@
 #   ASC_ISSUER_ID   ID del emisor (Issuer ID) de App Store Connect
 #   ASC_KEY_P8      Contenido completo del archivo AuthKey_XXXX.p8
 #
-# La firma es automática: Xcode crea certificados y perfiles con la clave de API,
-# así que no hace falta un Mac propio.
+# La firma es automática: Xcode crea el certificado de distribución y el perfil con la
+# clave de API, así que no hace falta un Mac propio ni tener iPhones registrados.
+# Se compila sin firmar y se firma al exportar para App Store Connect.
 
 name: iOS (TestFlight)
 
@@ -46,7 +47,7 @@ jobs:
       # Godot y sus plantillas (1,2 GB) se guardan en caché para no descargarlos en cada compilación.
       - name: Caché de Godot
         id: godot-cache
-        uses: actions/cache@v4
+        uses: actions/cache/restore@v4
         with:
           path: ~/godot
           key: godot-${{ env.GODOT_VERSION }}-ios
@@ -61,6 +62,14 @@ jobs:
           curl -sSLf -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_export_templates.tpz"
           unzip -q -j templates.tpz "templates/ios.zip" "templates/version.txt" -d templates
           rm templates.tpz
+
+      # Se guarda aunque luego falle la compilación, para no volver a descargarlo en el siguiente intento.
+      - name: Guardar Godot en caché
+        if: steps.godot-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}-ios
 
       - name: Instalar Godot
         run: |
@@ -90,7 +99,9 @@ jobs:
           printf '%s\n' "$ASC_KEY_P8" > ~/private_keys/AuthKey_${ASC_KEY_ID}.p8
           echo "ASC_KEY_PATH=$HOME/private_keys/AuthKey_${ASC_KEY_ID}.p8" >> "$GITHUB_ENV"
 
-      - name: Compilar y firmar
+      # Sin firmar: firmar aquí exigiría un perfil de desarrollo y un iPhone registrado.
+      # La firma de distribución se hace en el paso siguiente, al exportar.
+      - name: Compilar
         run: |
           xcodebuild archive \
             -project "build/ios/${APP_NAME}.xcodeproj" \
@@ -98,16 +109,14 @@ jobs:
             -configuration Release \
             -destination "generic/platform=iOS" \
             -archivePath "build/ios/${APP_NAME}.xcarchive" \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$ASC_KEY_PATH" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
             DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
             CODE_SIGN_STYLE=Automatic \
-            CODE_SIGN_IDENTITY="Apple Development" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
             PROVISIONING_PROFILE_SPECIFIER=""
 
-      - name: Subir a TestFlight
+      - name: Firmar y subir a TestFlight
         run: |
           cat > ExportOptions.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
