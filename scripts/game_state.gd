@@ -16,6 +16,7 @@ const LEVELS := [
 	{name = "LEVEL_6", script = "res://levels/level_06.gd", time = 100.0},
 	{name = "LEVEL_7", script = "res://levels/level_07.gd", time = 120.0},
 	{name = "LEVEL_8", script = "res://levels/level_08.gd", time = 100.0},
+	{name = "LEVEL_9", script = "res://levels/level_09.gd", time = 140.0},
 ]
 
 ## Idiomas disponibles (columnas de locale/translations.csv). "" = el del sistema.

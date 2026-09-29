@@ -1,5 +1,5 @@
 extends Level
-## Nivel 6 · Desafío final: de todo un poco, con charcos de ácido y un erizo guardando la meta.
+## Nivel 6 · Charcos de ácido: de todo un poco, con charcos de ácido y un erizo guardando la meta.
 
 
 func build() -> void:

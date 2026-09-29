@@ -35,6 +35,8 @@ const S_HILL := {pattern = 0, a = Color(0.62, 0.88, 0.66), b = Color(0.45, 0.74,
 const S_CHUTE := {pattern = 0, a = Color(0.98, 0.78, 0.4), b = Color(0.95, 0.55, 0.35), side = Color(0.5, 0.3, 0.2), edge = Color(1.0, 0.85, 0.5), tile_size = 1.0}
 const C_CHUTE_WALL := Color(0.5, 0.85, 1.0, 0.35)
 const S_SEESAW := {pattern = 0, a = Color(0.95, 0.85, 0.55), b = Color(0.85, 0.65, 0.4), side = Color(0.45, 0.3, 0.2), edge = Color(1.0, 0.9, 0.6), tile_size = 0.75}
+const S_TOWER := {pattern = 0, a = Color(0.42, 0.38, 0.62), b = Color(0.36, 0.32, 0.55), side = Color(0.3, 0.26, 0.5), edge = Color(0.62, 0.6, 0.95), tile_size = 1.5}
+const C_BARREL := Color(0.72, 0.42, 0.2)
 const S_BOOST := {pattern = 1, a = Color(0.35, 1.0, 1.0), b = Color(0.1, 0.35, 0.55), side = Color(0.1, 0.3, 0.4), edge = Color(0.4, 1.0, 1.0), tile_size = 0.45}
 
 const C_BUMPER := Color(1.0, 0.35, 0.75)
@@ -268,8 +270,9 @@ func add_crusher(floor_pos: Vector3, size: Vector2, period: float, phase := 0.0)
 
 
 ## Disco giratorio (centro de su cara superior). La canica gira con él. Con `bars` > 0
-## lleva barreras bajas hacia el borde que barren la superficie; el centro queda libre.
-func add_turntable(top: Vector3, radius: float, degrees_per_second: float, bars := 0) -> void:
+## lleva barreras bajas hacia el borde que barren la superficie; el centro (hasta `bar_start`)
+## queda libre.
+func add_turntable(top: Vector3, radius: float, degrees_per_second: float, bars := 0, bar_start := 1.5) -> void:
 	var height := 1.0
 	var body := AnimatableBody3D.new()
 	body.position = top - Vector3(0, height / 2.0, 0)
@@ -294,7 +297,6 @@ func add_turntable(top: Vector3, radius: float, degrees_per_second: float, bars 
 
 	var style := S_HAZARD.duplicate()
 	style.pattern_on_sides = true
-	var bar_start := 1.5
 	var bar_length := radius - bar_start - 0.4
 	for i in bars:
 		var angle := TAU * i / bars
@@ -440,6 +442,105 @@ func add_seesaw(top: Vector3, size: Vector3, axis: Vector3, degrees: float, peri
 			k = -1.0 + 2.0 * smoothstep(0.8, 1.0, p)
 		body.basis = Basis(axis, amplitude * k)
 	)
+
+
+## Torre: columna bajo una plataforma (centro superior `top`) hasta `bottom_y`. Solo decora.
+func add_tower(top: Vector3, size: Vector2, bottom_y: float) -> void:
+	var height := top.y - bottom_y
+	var column := BoxMesh.new()
+	column.size = Vector3(size.x, height, size.y)
+	column.material = _track_material(column.size, S_TOWER)
+	_add_mesh(self, column, top - Vector3(0, height / 2.0, 0))
+
+
+## Barriles que bajan rodando por la rampa de `from` a `to` (a ras de suelo) y de ancho `width`:
+## sale uno cada `period` segundos, alternando entre `lanes` carriles, y tarda `travel_time` en
+## bajar; al final caen al vacío (o, con `smash`, se rompen al llegar abajo). Si te alcanzan,
+## te empujan cuesta abajo.
+func add_barrels(from: Vector3, to: Vector3, width: float, period: float, travel_time: float, phase := 0.0, smash := false, lanes := 1) -> void:
+	var forward := (to - from).normalized()
+	var right := forward.cross(Vector3.UP).normalized()
+	var up := right.cross(forward).normalized()
+	var radius := 0.55
+	var lane_width := width / lanes
+	var length := lane_width - 0.6
+	var fall_time := 0.3 if smash else 1.5
+	var count := int(ceil((travel_time + fall_time) / period))
+	# Cada barril va siempre por el mismo carril: hace falta un número de barriles múltiplo de lanes.
+	count = int(ceil(float(count) / lanes)) * lanes
+	var cycle := period * count
+	var speed := from.distance_to(to) / travel_time
+	# El cilindro va tumbado: su eje (Y) apunta a lo ancho de la rampa.
+	var lying := Basis(forward, right, forward.cross(right))
+
+	var wood := _material(C_BARREL)
+	var hoop := _material(Color(0.35, 0.35, 0.4))
+	hoop.metallic = 0.6
+	for i in count:
+		var body := AnimatableBody3D.new()
+		var shape := CylinderShape3D.new()
+		shape.radius = radius
+		shape.height = length
+		var collision := CollisionShape3D.new()
+		collision.shape = shape
+		body.add_child(collision)
+		var mesh := CylinderMesh.new()
+		mesh.top_radius = radius
+		mesh.bottom_radius = radius
+		mesh.height = length
+		mesh.material = wood
+		var look := Node3D.new()
+		body.add_child(look)
+		_add_mesh(look, mesh)
+		for y in [-length * 0.35, 0.0, length * 0.35]:
+			var ring := TorusMesh.new()
+			ring.inner_radius = radius - 0.02
+			ring.outer_radius = radius + 0.06
+			ring.material = hoop
+			_add_mesh(look, ring, Vector3(0, y, 0))
+
+		var area := Area3D.new()
+		var area_shape := BoxShape3D.new()
+		area_shape.size = Vector3(radius * 2.0 + 0.5, length, radius * 2.0 + 0.5)
+		var area_collision := CollisionShape3D.new()
+		area_collision.shape = area_shape
+		area.add_child(area_collision)
+		body.add_child(area)
+		area.body_entered.connect(func(body_in: Node3D) -> void:
+			var m := body_in as Marble
+			if m != null:
+				m.apply_central_impulse(forward * 9.0 + Vector3.UP * 2.0)
+		)
+		add_child(body)
+
+		var offset := float(i) * period
+		var lane := right * ((i % lanes) + 0.5 - lanes / 2.0) * lane_width
+		_animators.append(func(t: float) -> void:
+			var u := fposmod(t + phase * period - offset, cycle)
+			var pos: Vector3
+			var travelled: float
+			var size := 1.0
+			if u < travel_time:
+				travelled = speed * u
+				pos = from + forward * travelled + up * radius
+			elif smash and u < travel_time + fall_time:
+				travelled = speed * travel_time
+				pos = to + up * radius
+				size = 1.0 - (u - travel_time) / fall_time
+			elif u < travel_time + fall_time:
+				var air := u - travel_time
+				travelled = speed * u
+				pos = to + forward * speed * air + up * radius + Vector3.DOWN * 4.9 * air * air
+			else:
+				travelled = 0.0
+				pos = from + up * radius
+			var active := u < travel_time + fall_time and size > 0.05
+			body.visible = active
+			collision.disabled = not active or size < 1.0
+			area.monitoring = active and size == 1.0
+			look.scale = Vector3.ONE * size
+			body.transform = Transform3D(Basis(right, -travelled / radius) * lying, pos + lane)
+		)
 
 
 ## Tobogán: canal con paredes que sigue la línea `points` (centro del suelo).
