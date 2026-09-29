@@ -34,6 +34,7 @@ const S_TURNTABLE := {pattern = 0, a = Color(0.55, 0.85, 0.95), b = Color(0.35, 
 const S_HILL := {pattern = 0, a = Color(0.62, 0.88, 0.66), b = Color(0.45, 0.74, 0.55), side = Color(0.22, 0.4, 0.32), edge = Color(0.7, 1.0, 0.75), tile_size = 1.2}
 const S_CHUTE := {pattern = 0, a = Color(0.98, 0.78, 0.4), b = Color(0.95, 0.55, 0.35), side = Color(0.5, 0.3, 0.2), edge = Color(1.0, 0.85, 0.5), tile_size = 1.0}
 const C_CHUTE_WALL := Color(0.5, 0.85, 1.0, 0.35)
+const S_SEESAW := {pattern = 0, a = Color(0.95, 0.85, 0.55), b = Color(0.85, 0.65, 0.4), side = Color(0.45, 0.3, 0.2), edge = Color(1.0, 0.9, 0.6), tile_size = 0.75}
 const S_BOOST := {pattern = 1, a = Color(0.35, 1.0, 1.0), b = Color(0.1, 0.35, 0.55), side = Color(0.1, 0.3, 0.4), edge = Color(0.4, 1.0, 1.0), tile_size = 0.45}
 
 const C_BUMPER := Color(1.0, 0.35, 0.75)
@@ -86,13 +87,14 @@ func add_block(top: Vector3, size: Vector3, style: Dictionary) -> StaticBody3D:
 	return body
 
 
-## Bloque con punto de control: si te caes, reapareces en la última plataforma pisada.
-func add_platform(top: Vector3, size: Vector3, style: Dictionary = S_FLOOR) -> StaticBody3D:
+## Bloque con punto de control: si te caes, reapareces en la última plataforma pisada, en su
+## centro o desplazado `spawn_offset` (por ejemplo si en el centro hay una pared).
+func add_platform(top: Vector3, size: Vector3, style: Dictionary = S_FLOOR, spawn_offset := Vector3.ZERO) -> StaticBody3D:
 	var body := add_block(top, size, style)
 	var area := _add_area(top + Vector3(0, 1, 0), Vector3(size.x, 2, size.z))
 	area.body_entered.connect(func(body_in: Node3D) -> void:
 		if body_in is Marble:
-			checkpoint_reached.emit(top + Vector3.UP)
+			checkpoint_reached.emit(top + spawn_offset + Vector3.UP)
 	)
 	return body
 
@@ -349,6 +351,95 @@ func add_valley(from: Vector3, to: Vector3, width: float, depth: float, style: D
 		_add_box(body, Vector3(across.length(), thickness, length), style)
 		add_child(body)
 	lowest_y = minf(lowest_y, minf(from.y, to.y) - depth)
+
+
+## Zona de viento: caja con centro de su base en `floor_center` y tamaño `size`. Sopla hacia
+## `dir` a rachas: cada `period` segundos está un rato en calma, sube, sopla y amaina.
+## `strength` es la aceleración que da a la canica (la tuya acelera con 20).
+func add_wind(floor_center: Vector3, size: Vector3, dir: Vector3, strength: float, period: float, phase := 0.0) -> void:
+	dir = dir.normalized()
+	var area := _add_area(floor_center + Vector3(0, size.y / 2.0, 0), size)
+
+	var streak := BoxMesh.new()
+	streak.size = Vector3(0.04, 0.9, 0.04)
+	var air := StandardMaterial3D.new()
+	air.albedo_color = Color(0.85, 0.95, 1.0, 0.55)
+	air.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	air.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	streak.material = air
+	# Las rayas nacen en el borde por donde entra el viento y mueren al llegar al otro.
+	var length := absf(dir.x) * size.x + absf(dir.z) * size.z
+	var across := Vector3(absf(dir.z), 0, absf(dir.x))
+	var speed := 11.0
+	var particles := CPUParticles3D.new()
+	particles.mesh = streak
+	particles.amount = clampi(int(size.x * size.z * 0.6), 10, 90)
+	particles.lifetime = (length - 0.8) / speed
+	particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+	particles.emission_box_extents = across * (size.x * across.x + size.z * across.z) / 2.0 + Vector3(0, 0.6, 0) + dir.abs() * 0.1
+	particles.direction = dir
+	particles.spread = 0.0
+	particles.gravity = Vector3.ZERO
+	particles.initial_velocity_min = speed
+	particles.initial_velocity_max = speed
+	particles.particle_flag_align_y = true
+	particles.position = floor_center + Vector3(0, 0.8, 0) - dir * (length / 2.0 - 0.4)
+	particles.emitting = false
+	add_child(particles)
+
+	_animators.append(func(t: float) -> void:
+		# 35 % calma, 10 % sube, 40 % sopla, 15 % amaina
+		var p := fposmod(t / period + phase, 1.0)
+		var gust := 0.0
+		if p < 0.35:
+			gust = 0.0
+		elif p < 0.45:
+			gust = (p - 0.35) / 0.1
+		elif p < 0.85:
+			gust = 1.0
+		else:
+			gust = 1.0 - (p - 0.85) / 0.15
+		particles.emitting = gust > 0.2
+		if gust > 0.0 and marble != null and area.overlaps_body(marble):
+			marble.apply_central_force(dir * strength * gust * marble.mass)
+	)
+
+
+## Balancín: tablón (centro de su cara superior `top`, tamaño `size`) que se inclina hacia un
+## lado y hacia el otro alrededor de `axis` (que pasa por su centro). Se queda un rato
+## inclinado en cada lado.
+func add_seesaw(top: Vector3, size: Vector3, axis: Vector3, degrees: float, period: float, phase := 0.0) -> void:
+	axis = axis.normalized()
+	var body := AnimatableBody3D.new()
+	body.position = top - Vector3(0, size.y / 2.0, 0)
+	_add_box(body, size, S_SEESAW)
+	add_child(body)
+	lowest_y = minf(lowest_y, top.y)
+
+	# Apoyo triangular bajo el centro (decorado)
+	var along_z := absf(axis.z) > 0.5
+	var fulcrum := PrismMesh.new()
+	fulcrum.size = Vector3(1.2, 1.4, (size.z if along_z else size.x) * 0.5)
+	fulcrum.material = _material(Color(0.42, 0.44, 0.52))
+	var fulcrum_instance := _add_mesh(self, fulcrum, top - Vector3(0, size.y + 0.7, 0))
+	if not along_z:
+		fulcrum_instance.rotation.y = PI / 2.0
+
+	var amplitude := deg_to_rad(degrees)
+	_animators.append(func(t: float) -> void:
+		# 30 % inclinado a un lado, 20 % girando, 30 % al otro, 20 % volviendo
+		var p := fposmod(t / period + phase, 1.0)
+		var k := 1.0
+		if p < 0.3:
+			k = 1.0
+		elif p < 0.5:
+			k = 1.0 - 2.0 * smoothstep(0.3, 0.5, p)
+		elif p < 0.8:
+			k = -1.0
+		else:
+			k = -1.0 + 2.0 * smoothstep(0.8, 1.0, p)
+		body.basis = Basis(axis, amplitude * k)
+	)
 
 
 ## Tobogán: canal con paredes que sigue la línea `points` (centro del suelo).
