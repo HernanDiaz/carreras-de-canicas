@@ -444,13 +444,14 @@ func add_seesaw(top: Vector3, size: Vector3, axis: Vector3, degrees: float, peri
 	)
 
 
-## Torre: columna bajo una plataforma (centro superior `top`) hasta `bottom_y`. Solo decora.
+## Torre: columna maciza bajo una plataforma (centro superior `top`) hasta `bottom_y`.
+## Es sólida: hace de tope si llegas a ella desde abajo (por ejemplo, desde un ascensor).
 func add_tower(top: Vector3, size: Vector2, bottom_y: float) -> void:
 	var height := top.y - bottom_y
-	var column := BoxMesh.new()
-	column.size = Vector3(size.x, height, size.y)
-	column.material = _track_material(column.size, S_TOWER)
-	_add_mesh(self, column, top - Vector3(0, height / 2.0, 0))
+	var body := StaticBody3D.new()
+	body.position = top - Vector3(0, height / 2.0, 0)
+	_add_box(body, Vector3(size.x, height, size.y), S_TOWER)
+	add_child(body)
 
 
 ## Barriles que bajan rodando por la rampa de `from` a `to` (a ras de suelo) y de ancho `width`:

@@ -15,20 +15,20 @@ func build() -> void:
 
 	# Espera al ascensor con un gusano detrás
 	add_platform(Vector3(0, 4, -19), Vector3(8, 2, 8))
-	add_tower(Vector3(0, 2, -19), Vector2(7, 7), TOWER_BOTTOM)
+	add_tower(Vector3(0, 2, -19), Vector2(8, 8), TOWER_BOTTOM)
 	add_worm(Vector3(-2.7, 4, -16.5), Vector3(0, 4, -19), Vector2(8, 8))
 	add_moving_platform(Vector3(0, 4, -25), Vector3(0, 10, -25), Vector3(4, 1, 4), 8.0)
 
 	# Arriba te esperan dos canicas de acero; salta a la torre de enfrente
 	add_platform(Vector3(0, 10, -31), Vector3(8, 2, 8))
-	add_tower(Vector3(0, 8, -31), Vector2(7, 7), TOWER_BOTTOM)
+	add_tower(Vector3(0, 8, -31), Vector2(8, 8), TOWER_BOTTOM)
 	# (lejos del ascensor: si no, te tiran de él nada más llegar arriba)
 	add_chaser(Vector3(-2.8, 10, -34), 4.5)
 	add_chaser(Vector3(2.8, 10, -34), 4.5)
 	add_jump_pad(Vector3(0, 10, -33.8), Vector3.FORWARD, 8.5, 6.0)
 
 	add_platform(Vector3(0, 10, -45), Vector3(8, 2, 8))
-	add_tower(Vector3(0, 8, -45), Vector2(7, 7), TOWER_BOTTOM)
+	add_tower(Vector3(0, 8, -45), Vector2(8, 8), TOWER_BOTTOM)
 	add_spinner(Vector3(0, 10, -45), 7.0, 70.0)
 
 	# Puente que se desmorona, con rachas de viento
@@ -38,7 +38,7 @@ func build() -> void:
 
 	# La cima: dos canicas de acero y un erizo
 	add_platform(Vector3(20, 10, -45), Vector3(8, 2, 8))
-	add_tower(Vector3(20, 8, -45), Vector2(7, 7), TOWER_BOTTOM)
+	add_tower(Vector3(20, 8, -45), Vector2(8, 8), TOWER_BOTTOM)
 	add_chaser(Vector3(17.5, 10, -47.5))
 	add_chaser(Vector3(22.5, 10, -47.5))
 	add_patroller(Vector3(16.5, 10, -42.5), Vector3(23.5, 10, -42.5), 2.6)
