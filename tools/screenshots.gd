@@ -16,34 +16,47 @@ const DEVICES := {
 
 const CAPTIONS := {
 	"en": [
-		"Tilt your phone to roll",
-		"Ramps, bridges and tricky tracks",
-		"Dodge the steel marbles",
-		"Time your moves past the pendulums",
+		"Watch out for hungry worms",
+		"Dodge crushers and conveyor belts",
+		"Spiral slides and wild descents",
+		"Brave the wind and the maze",
+		"Climb the great tower",
 		"Race your friends over Wi‑Fi",
 	],
 	"es": [
-		"Inclina el móvil para rodar",
-		"Rampas, puentes y pistas con trampa",
-		"Esquiva las canicas de acero",
-		"Esquiva los péndulos a tiempo",
+		"Cuidado con los gusanos hambrientos",
+		"Esquiva prensas y cintas transportadoras",
+		"Toboganes en espiral y bajadas de vértigo",
+		"Desafía al viento y al laberinto",
+		"Sube a la gran torre",
 		"Echa carreras con tus amigos por Wi‑Fi",
 	],
 }
 
-## Cada captura: escena y, en las de partida, nivel y posición de la canica.
+## Cada captura: nivel, posición de la canica y, si hace falta, el tiempo del nivel al colocarla
+## (`time`) y cuándo se toma: al llegar el nivel a `shoot_at` segundos, cuando el gusano está
+## junto a la canica (`worm`) o, si no, a los 60 fotogramas. Renderizar a este tamaño es lento,
+## así que contar fotogramas no sirve para momentos concretos.
 const SHOTS := [
-	{scene = "menu"},
-	{scene = "game", level = 0, marble = Vector3(0.0, -1.2, -7.5)},
-	{scene = "game", level = 3, marble = Vector3(0.6, -1.5, -14.5)},
-	{scene = "game", level = 4, marble = Vector3(0.0, 0.5, -29.0)},
-	{scene = "game", level = 0, marble = Vector3(0.9, -2.5, -13.2), rivals = true},
+	# El gusano sale del agujero y va a por la canica (se toma antes de que se la coma)
+	{level = 6, marble = Vector3(0.2, -3.5, -22.2), worm = true},
+	# Pasillo de prensas: la del medio está cayendo
+	{level = 6, marble = Vector3(0, -3.5, -52.25), time = 2.43},
+	# Tobogán en espiral bajando hacia la meta
+	{level = 6, marble = Vector3(25.24, -10.18, -134.8)},
+	# Cresta con viento de costado y el laberinto detrás (en plena racha)
+	{level = 7, marble = Vector3(8.5, -5.0, -60.5), time = 0.4, shoot_at = 1.6},
+	# Subida a la torre esquivando barriles
+	{level = 8, marble = Vector3(1.2, 2.7, -9.5), time = 1.0},
+	# Carrera en la cima de la torre
+	{level = 8, marble = Vector3(20.5, 10.5, -44.5), rivals = true},
 ]
 
+## Rivales de la captura de carrera, colocados respecto a la canica.
 const RIVALS := [
-	{name = "Ana", slot = 1, pos = Vector3(-1.3, -2.5, -12.0)},
-	{name = "Luis", slot = 2, pos = Vector3(1.8, -2.5, -15.6)},
-	{name = "Sofía", slot = 3, pos = Vector3(-0.4, -1.5, -9.8)},
+	{name = "Ana", slot = 1, offset = Vector3(-2.2, 0, 1.6)},
+	{name = "Luis", slot = 2, offset = Vector3(1.9, 0, -1.2)},
+	{name = "Sofía", slot = 3, offset = Vector3(-0.8, 0, -2.6)},
 ]
 
 var _jobs := []
@@ -87,12 +100,8 @@ func _next() -> void:
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(_viewport)
 
-	if shot.scene == "menu":
-		root.get_node("GameState").open_screen = "main"
-		_scene = load("res://scenes/menu.tscn").instantiate()
-	else:
-		root.get_node("GameState").current_level = shot.level
-		_scene = load("res://scenes/game.tscn").instantiate()
+	root.get_node("GameState").current_level = shot.level
+	_scene = load("res://scenes/game.tscn").instantiate()
 	_viewport.add_child(_scene)
 	_add_caption(CAPTIONS[job.locale][job.index], device.ui.x)
 	_frame = 0
@@ -108,10 +117,7 @@ func _process(_delta: float) -> bool:
 	_frame += 1
 	var shot: Dictionary = SHOTS[_jobs[_job].index]
 
-	if shot.scene == "menu" and _frame == 2:
-		_hide_menu_extras()
-
-	if shot.scene == "game" and not _placed:
+	if not _placed:
 		_scene._countdown = 0.0
 		if _scene.state == _scene.State.PLAYING:
 			_place(shot)
@@ -119,7 +125,7 @@ func _process(_delta: float) -> bool:
 			_frame = 0
 		return false
 
-	if _frame == 60:
+	if _frame >= 20 and _ready_to_shoot(shot):
 		var job: Dictionary = _jobs[_job]
 		var path := "%s/%s/%s_%d.png" % [OUT_DIR, job.locale, job.device, job.index + 1]
 		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(path.get_base_dir()))
@@ -127,6 +133,21 @@ func _process(_delta: float) -> bool:
 		print("  %s" % path)
 		_next()
 	return false
+
+
+func _ready_to_shoot(shot: Dictionary) -> bool:
+	if shot.has("worm"):
+		# Con la boca abierta a punto de alcanzarla, pero sin habérsela comido aún.
+		for node in _scene.level.get_children():
+			var worm := node as Worm
+			if worm != null and worm._emerge >= 1.0:
+				var head: Vector3 = worm._points[0]
+				var marble: Vector3 = _scene.marble.global_position
+				return Vector2(head.x - marble.x, head.z - marble.z).length() < 1.9
+		return false
+	if shot.has("shoot_at"):
+		return _scene.level._time >= shot.shoot_at
+	return _frame >= 60
 
 
 ## Coloca la canica (quieta) donde queda bien la foto y quita los mensajes de la partida.
@@ -139,20 +160,15 @@ func _place(shot: Dictionary) -> void:
 	camera.global_position = shot.marble + camera.offset
 	_scene.message_label.visible = false
 	_scene._message_time = 0.0
+	if shot.has("time"):
+		_scene.level._time = shot.time
 	if shot.get("rivals", false):
 		var mesh: Mesh = (marble.get_node("Mesh") as MeshInstance3D).mesh
 		for rival in RIVALS:
 			var remote := RemoteMarble.new()
 			_scene.add_child(remote)
 			remote.setup(mesh, root.get_node("Net").COLORS[rival.slot], rival.name)
-			remote.push_state(rival.pos, Vector3.ZERO, Quaternion(Vector3.UP, rival.slot))
-
-
-## En iPhone no existe el botón Salir, y el de idioma quedaría tapado por el texto de la captura.
-func _hide_menu_extras() -> void:
-	for button in _scene.find_children("*", "Button", true, false):
-		if button.text == tr("MENU_QUIT") or button.theme_type_variation == UI.SECONDARY:
-			button.visible = false
+			remote.push_state(shot.marble + rival.offset, Vector3.ZERO, Quaternion(Vector3.UP, rival.slot))
 
 
 ## Franja inferior con el texto de la captura.
