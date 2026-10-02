@@ -12,3 +12,9 @@ build/
 export_credentials.cfg
 *.keystore
 *.jks
+
+# Vídeos (grabaciones y vistas previas de la App Store): no se suben al repositorio
+*.mp4
+*.MP4
+*.mov
+*.MOV
