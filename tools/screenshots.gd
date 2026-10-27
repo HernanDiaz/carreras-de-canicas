@@ -12,6 +12,10 @@ const DEVICES := {
 	# App Store Connect pide la pantalla de 6,5" (las demás se generan a partir de esta)
 	"iphone65": {size = Vector2i(2778, 1284), ui = Vector2i(1558, 720)},
 	"ipad13": {size = Vector2i(2752, 2064), ui = Vector2i(960, 720)},
+	# Google Play: el teléfono admite como mucho una proporción 2:1. Sin la interfaz del juego.
+	"android": {size = Vector2i(1920, 1080), ui = Vector2i(1280, 720), hud = false},
+	# Gráfico de funciones de Google Play: sin interfaz ni texto (el título se añade aparte)
+	"feature": {size = Vector2i(1024, 500), ui = Vector2i(1475, 720), hud = false, caption = false},
 }
 
 const CAPTIONS := {
@@ -69,12 +73,20 @@ var _placed := false
 
 func _initialize() -> void:
 	for locale in CAPTIONS:
-		for device in DEVICES:
+		for device in _devices():
 			for i in SHOTS.size():
 				_jobs.append({locale = locale, device = device, index = i})
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT_DIR))
 	# La primera captura se lanza en el primer fotograma: antes, el autoload GameState
 	# todavía no ha aplicado el idioma del sistema y lo pisaría.
+
+
+## Dispositivos a generar: todos, o solo los indicados tras "--" (p. ej. -- android).
+func _devices() -> Array:
+	var wanted := OS.get_cmdline_user_args()
+	if wanted.is_empty():
+		return DEVICES.keys()
+	return DEVICES.keys().filter(func(d: String) -> bool: return d in wanted)
 
 
 func _next() -> void:
@@ -103,7 +115,8 @@ func _next() -> void:
 	root.get_node("GameState").current_level = shot.level
 	_scene = load("res://scenes/game.tscn").instantiate()
 	_viewport.add_child(_scene)
-	_add_caption(CAPTIONS[job.locale][job.index], device.ui.x)
+	if device.get("caption", true):
+		_add_caption(CAPTIONS[job.locale][job.index], device.ui.x)
 	_frame = 0
 	_placed = false
 
@@ -159,6 +172,7 @@ func _place(shot: Dictionary) -> void:
 	var camera: Camera3D = _scene.camera
 	camera.global_position = shot.marble + camera.offset
 	_scene.message_label.visible = false
+	_scene.hud.visible = DEVICES[_jobs[_job].device].get("hud", true)
 	_scene._message_time = 0.0
 	if shot.has("time"):
 		_scene.level._time = shot.time
