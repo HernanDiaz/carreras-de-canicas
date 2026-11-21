@@ -29,6 +29,8 @@ scripts/level.gd           Clase base Level con todas las piezas, trampas y enem
 scripts/chaser.gd          Canica de acero enemiga
 scripts/marble.gd          Control por inclinación, hielo y plataformas móviles
 scripts/ui.gd              Tema visual y paneles de la interfaz
+scripts/ghost.gd           Canica fantasma (graba y repite la mejor vuelta)
+scripts/leaderboards.gd    Autoload: clasificaciones de Game Center y Play Games
 scripts/tilt_simulator.gd  Simula la inclinación con el ratón en el PC
 shaders/track.gdshader     Material de las piezas (damero, flechas, franjas, bordes)
 levels/level_01.gd ...     Un script por nivel
@@ -49,6 +51,13 @@ levels/level_01.gd ...     Un script por nivel
 | 9 | La gran torre | Barriles rodando, ascensor, torres, medio tubo y meta en un disco giratorio |
 
 Superar un nivel desbloquea el siguiente. El progreso y los récords se guardan en `user://progreso.cfg`.
+
+**Estrellas:** terminar da 1 estrella; bajar de los dos tiempos de `stars` de cada nivel (en `game_state.gd`) da la 2.ª y la 3.ª.
+**Fantasma:** al batir un récord se guarda la vuelta en `user://fantasmas/nivel_N.bin` y en la siguiente partida en solitario corres contra ella (se desactiva en Opciones).
+**Clasificaciones mundiales** (`scripts/leaderboards.gd`): una por nivel, solo partidas en solitario.
+- iOS: Game Center, identificadores `level_1_time` … `level_9_time` (App Store Connect, tiempo en centésimas). El plugin GameCenterKit se compila en el workflow de iOS.
+- Android: Servicios de Juegos de Google Play (plugin en `addons/GodotPlayGameServices`, exportación con gradle). Game ID `664147782635`; los ID de los marcadores están en `leaderboards.gd` (tiempo en milésimas).
+- En el PC no hacen nada.
 
 ## Añadir un nivel
 
