@@ -38,6 +38,12 @@ config/icon="res://icon/icon_full.svg"
 
 GameState="*res://scripts/game_state.gd"
 Net="*res://scripts/net.gd"
+Leaderboards="*res://scripts/leaderboards.gd"
+GodotPlayGameServices="*res://addons/GodotPlayGameServices/scripts/autoloads/godot_play_game_services.gd"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/GodotPlayGameServices/plugin.cfg")
 
 [display]
 

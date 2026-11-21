@@ -91,6 +91,34 @@ jobs:
           cp ~/godot/templates/* "$dest/"
           echo "GODOT=$HOME/godot/Godot.app/Contents/MacOS/Godot" >> "$GITHUB_ENV"
 
+      # Clasificaciones de Game Center: el plugin GameCenterKit (MIT) se compila aquí desde su
+      # código fuente, en una versión fija, en vez de usar sus binarios ya hechos. No está en el
+      # repositorio porque solo sirve en iOS (en el PC y en Android no hace falta).
+      - name: Compilar el plugin de Game Center
+        env:
+          GCK_COMMIT: 65274996c3cb8a432947faed155713df94d2e5fe   # v1.0.1
+          GODOT_CPP_COMMIT: e83fd0904c13356ed1d4c3d09f8bb9132bdc6b77
+        run: |
+          brew install scons
+          mkdir -p ~/gck && cd ~/gck
+          curl -sSLf "https://github.com/keremvatandas/godot-ios-gamecenter/archive/${GCK_COMMIT}.tar.gz" | tar xz --strip-components=1
+          rm -rf godot-cpp && mkdir godot-cpp
+          curl -sSLf "https://github.com/godotengine/godot-cpp/archive/${GODOT_CPP_COMMIT}.tar.gz" | tar xz --strip-components=1 -C godot-cpp
+          scons platform=ios target=template_release arch=arm64 ios_min_version=14.0 -j"$(sysctl -n hw.ncpu)"
+          # La biblioteca estática tiene que llevar dentro godot-cpp.
+          xcrun libtool -static -o libgamecenter.a \
+            build/libgamecenter.ios.template_release.arm64.a \
+            godot-cpp/bin/libgodot-cpp.ios.template_release.arm64.a
+          dest="$GITHUB_WORKSPACE/addons/gamecenter"
+          mkdir -p "$dest/bin"
+          cp example/addons/gamecenter/gamecenter.gdextension example/addons/gamecenter/plugin.cfg \
+             example/addons/gamecenter/plugin.gd LICENSE "$dest/"
+          xcodebuild -create-xcframework -library libgamecenter.a -output "$dest/bin/libgamecenter.ios.xcframework"
+          # Activar su plugin de exportación, que enlaza GameKit en el proyecto de Xcode.
+          cd "$GITHUB_WORKSPACE"
+          sed -i '' 's|^enabled=PackedStringArray("res://addons/GodotPlayGameServices/plugin.cfg")$|enabled=PackedStringArray("res://addons/GodotPlayGameServices/plugin.cfg", "res://addons/gamecenter/plugin.cfg")|' project.godot
+          grep -q "addons/gamecenter/plugin.cfg" project.godot
+
       - name: Generar el proyecto de Xcode
         run: |
           # El Team ID no se guarda en el repositorio: se pone aquí desde el secreto.

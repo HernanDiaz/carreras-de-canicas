@@ -248,6 +248,7 @@ func _finish(won: bool) -> void:
 	pause_button.disabled = true
 	if won:
 		var record := GameState.complete_level(GameState.current_level, elapsed, _recorder.samples)
+		Leaderboards.submit(GameState.current_level, elapsed)
 		_show_message(tr("GOAL"), 1.3)
 		var subtitle := tr("TIME_FMT") % elapsed
 		if record:
@@ -260,6 +261,9 @@ func _finish(won: bool) -> void:
 		if GameState.has_next_level():
 			buttons.append([tr("NEXT_LEVEL"), func() -> void: GameState.play(GameState.current_level + 1)])
 		buttons.append([tr("RETRY"), _restart])
+		if Leaderboards.available():
+			var index := GameState.current_level
+			buttons.append([tr("WORLD_RANKING"), func() -> void: Leaderboards.show_level(index)])
 		buttons.append([tr("MENU"), GameState.go_to_menu])
 		var title := tr("LEVEL_CLEARED") if GameState.has_next_level() else tr("GAME_COMPLETED")
 		get_tree().create_timer(1.4).timeout.connect(func() -> void: _show_overlay(title, subtitle, buttons, UI.stars(stars, 64.0)))
