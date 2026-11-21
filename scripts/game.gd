@@ -38,6 +38,9 @@ var _watch_id := 0
 var _spectator_hud: Array[Control] = []
 var _watch_label: Label
 var _standings_label: Label
+## Fantasma de tu mejor vuelta (solo en partida de un jugador) y grabación de la vuelta actual.
+var _ghost: Ghost
+var _recorder := Ghost.Recorder.new()
 
 @onready var marble: Marble = $Marble
 @onready var camera: MarbleCamera = $Camera
@@ -98,6 +101,10 @@ func _ready() -> void:
 	if race:
 		respawn_point += START_OFFSETS[Net.my_slot() % START_OFFSETS.size()]
 		_setup_race()
+	elif GameState.show_ghost:
+		_ghost = Ghost.load_for(GameState.current_level, (marble.get_node("Mesh") as MeshInstance3D).mesh)
+		if _ghost != null:
+			add_child(_ghost)
 	marble.global_position = respawn_point
 	marble.stop_in_place()
 	camera.global_position = respawn_point + camera.offset
@@ -124,6 +131,10 @@ func _process(delta: float) -> void:
 		State.PLAYING:
 			time_left = maxf(time_left - delta, 0.0)
 			elapsed += delta
+			if not race:
+				_recorder.record(elapsed, marble)
+				if _ghost != null:
+					_ghost.seek(elapsed)
 			if time_left == 0.0:
 				marble.stop_in_place()
 				_finish(false)
@@ -236,18 +247,22 @@ func _finish(won: bool) -> void:
 		return
 	pause_button.disabled = true
 	if won:
-		var record := GameState.complete_level(GameState.current_level, elapsed)
+		var record := GameState.complete_level(GameState.current_level, elapsed, _recorder.samples)
 		_show_message(tr("GOAL"), 1.3)
 		var subtitle := tr("TIME_FMT") % elapsed
 		if record:
 			subtitle += "\n" + tr("NEW_RECORD")
+		var stars := GameState.stars_for(GameState.current_level, elapsed)
+		if stars < 3:
+			var limits: Array = GameState.LEVELS[GameState.current_level].stars
+			subtitle += "\n" + tr("NEXT_STAR_FMT") % limits[2 - stars]
 		var buttons := []
 		if GameState.has_next_level():
 			buttons.append([tr("NEXT_LEVEL"), func() -> void: GameState.play(GameState.current_level + 1)])
 		buttons.append([tr("RETRY"), _restart])
 		buttons.append([tr("MENU"), GameState.go_to_menu])
 		var title := tr("LEVEL_CLEARED") if GameState.has_next_level() else tr("GAME_COMPLETED")
-		get_tree().create_timer(1.4).timeout.connect(func() -> void: _show_overlay(title, subtitle, buttons))
+		get_tree().create_timer(1.4).timeout.connect(func() -> void: _show_overlay(title, subtitle, buttons, UI.stars(stars, 64.0)))
 	else:
 		_show_message(tr("TIME_UP"), 1.2)
 		get_tree().create_timer(1.2).timeout.connect(func() -> void:
@@ -558,11 +573,11 @@ func _on_connection_lost(reason: String) -> void:
 
 # --- Interfaz -----------------------------------------------------------------
 
-func _show_overlay(title: String, subtitle: String, buttons: Array) -> void:
+func _show_overlay(title: String, subtitle: String, buttons: Array, extra: Control = null) -> void:
 	_close_overlay()
 	message_label.visible = false
 	_message_time = 0.0
-	_overlay = UI.overlay(title, subtitle, buttons)
+	_overlay = UI.overlay(title, subtitle, buttons, extra)
 	_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
 	hud.add_child(_overlay)
 

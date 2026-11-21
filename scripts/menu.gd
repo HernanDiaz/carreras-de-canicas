@@ -6,6 +6,7 @@ var _current := ""
 var _t := 0.0
 var _marble_visual: MeshInstance3D
 var _level_grid: GridContainer
+var _stars_total: Label
 var _reset_button: Button
 var _reset_armed := false
 var _name_edit: LineEdit
@@ -126,7 +127,17 @@ func _build_main() -> Control:
 
 func _build_levels() -> Control:
 	var box := _screen_box()
-	box.add_child(UI.label(tr("CHOOSE_LEVEL"), 56, UI.C_ACCENT))
+	var title_row := HBoxContainer.new()
+	title_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	title_row.add_theme_constant_override("separation", 12)
+	title_row.add_child(UI.label(tr("CHOOSE_LEVEL"), 56, UI.C_ACCENT))
+	title_row.add_child(UI.spacer(0))
+	var star := UI.stars(1, 40.0, 1)
+	star.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	title_row.add_child(star)
+	_stars_total = UI.label("", 34, UI.C_STAR)
+	title_row.add_child(_stars_total)
+	box.add_child(title_row)
 	_level_grid = GridContainer.new()
 	_level_grid.columns = 3
 	_level_grid.add_theme_constant_override("h_separation", 16)
@@ -156,7 +167,17 @@ func _fill_level_grid() -> void:
 		card.custom_minimum_size.y = 130
 		card.add_theme_font_size_override("font_size", 26)
 		card.disabled = not GameState.is_unlocked(i)
+		if GameState.is_unlocked(i):
+			# Estrellas en la esquina de arriba a la derecha de la tarjeta.
+			var stars := UI.stars(GameState.stars_of(i), 22.0)
+			stars.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+			stars.offset_left = -84.0
+			stars.offset_top = 8.0
+			stars.offset_right = -10.0
+			stars.offset_bottom = 30.0
+			card.add_child(stars)
 		_level_grid.add_child(card)
+	_stars_total.text = "%d / %d" % [GameState.total_stars(), GameState.LEVELS.size() * 3]
 
 
 func _build_options() -> Control:
@@ -203,6 +224,8 @@ func _build_options() -> Control:
 		func(on: bool) -> void: GameState.invert_x = on))
 	box.add_child(_check(tr("OPT_INVERT_Y"), GameState.invert_y,
 		func(on: bool) -> void: GameState.invert_y = on))
+	box.add_child(_check(tr("OPT_GHOST"), GameState.show_ghost,
+		func(on: bool) -> void: GameState.show_ghost = on))
 	box.add_child(_check(tr("OPT_SENSOR"), GameState.show_debug,
 		func(on: bool) -> void: GameState.show_debug = on))
 

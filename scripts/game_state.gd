@@ -2,21 +2,23 @@ extends Node
 ## Estado global (autoload "GameState"): lista de niveles, progreso guardado y opciones.
 
 const SAVE_PATH := "user://progreso.cfg"
+const GHOST_DIR := "user://fantasmas"
 const GAME_SCENE := "res://scenes/game.tscn"
 const MENU_SCENE := "res://scenes/menu.tscn"
 
 ## Para añadir un nivel: crea su script en res://levels/, añádelo aquí y pon su nombre
 ## (clave LEVEL_N) en locale/translations.csv. `name` es la clave de traducción: usa tr(name).
+## `stars` = tiempos máximos para conseguir 3 y 2 estrellas (terminarlo ya da 1).
 const LEVELS := [
-	{name = "LEVEL_1", script = "res://levels/level_01.gd", time = 60.0},
-	{name = "LEVEL_2", script = "res://levels/level_02.gd", time = 60.0},
-	{name = "LEVEL_3", script = "res://levels/level_03.gd", time = 75.0},
-	{name = "LEVEL_4", script = "res://levels/level_04.gd", time = 75.0},
-	{name = "LEVEL_5", script = "res://levels/level_05.gd", time = 80.0},
-	{name = "LEVEL_6", script = "res://levels/level_06.gd", time = 100.0},
-	{name = "LEVEL_7", script = "res://levels/level_07.gd", time = 120.0},
-	{name = "LEVEL_8", script = "res://levels/level_08.gd", time = 100.0},
-	{name = "LEVEL_9", script = "res://levels/level_09.gd", time = 140.0},
+	{name = "LEVEL_1", script = "res://levels/level_01.gd", time = 60.0, stars = [25.0, 38.0]},
+	{name = "LEVEL_2", script = "res://levels/level_02.gd", time = 60.0, stars = [42.0, 52.0]},
+	{name = "LEVEL_3", script = "res://levels/level_03.gd", time = 75.0, stars = [22.0, 35.0]},
+	{name = "LEVEL_4", script = "res://levels/level_04.gd", time = 75.0, stars = [34.0, 50.0]},
+	{name = "LEVEL_5", script = "res://levels/level_05.gd", time = 80.0, stars = [29.0, 45.0]},
+	{name = "LEVEL_6", script = "res://levels/level_06.gd", time = 100.0, stars = [70.0, 85.0]},
+	{name = "LEVEL_7", script = "res://levels/level_07.gd", time = 120.0, stars = [80.0, 100.0]},
+	{name = "LEVEL_8", script = "res://levels/level_08.gd", time = 100.0, stars = [50.0, 70.0]},
+	{name = "LEVEL_9", script = "res://levels/level_09.gd", time = 140.0, stars = [52.0, 85.0]},
 ]
 
 ## Idiomas disponibles (columnas de locale/translations.csv). "" = el del sistema.
@@ -35,6 +37,8 @@ var tilt_custom := false
 var invert_x := false
 var invert_y := false
 var show_debug := false
+## Mostrar la canica fantasma de tu mejor vuelta.
+var show_ghost := true
 var player_name := ""
 ## Idioma elegido a mano ("" = automático, el del sistema).
 var language := ""
@@ -101,19 +105,64 @@ func is_unlocked(index: int) -> bool:
 
 
 ## Registra un nivel superado. Devuelve true si es un nuevo récord.
-func complete_level(index: int, seconds: float) -> bool:
+## `ghost` es la vuelta grabada: se guarda como fantasma si es récord.
+func complete_level(index: int, seconds: float, ghost := PackedFloat32Array()) -> bool:
 	unlocked = clampi(maxi(unlocked, index + 2), 1, LEVELS.size())
 	var record: bool = not best_times.has(index) or seconds < best_times[index]
 	if record:
 		best_times[index] = seconds
+		if not ghost.is_empty():
+			save_ghost(index, ghost)
 	save_data()
 	return record
+
+
+## Estrellas (1 a 3) que da un tiempo en un nivel; 0 si no está superado.
+func stars_for(index: int, seconds: float) -> int:
+	var limits: Array = LEVELS[index].stars
+	if seconds <= limits[0]:
+		return 3
+	return 2 if seconds <= limits[1] else 1
+
+
+func stars_of(index: int) -> int:
+	return stars_for(index, best_times[index]) if best_times.has(index) else 0
+
+
+func total_stars() -> int:
+	var total := 0
+	for index in LEVELS.size():
+		total += stars_of(index)
+	return total
 
 
 func reset_progress() -> void:
 	unlocked = 1
 	best_times.clear()
+	for index in LEVELS.size():
+		DirAccess.remove_absolute(_ghost_path(index))
 	save_data()
+
+
+func save_ghost(index: int, samples: PackedFloat32Array) -> void:
+	DirAccess.make_dir_recursive_absolute(GHOST_DIR)
+	var file := FileAccess.open(_ghost_path(index), FileAccess.WRITE)
+	if file != null:
+		file.store_buffer(samples.to_byte_array().compress(FileAccess.COMPRESSION_ZSTD))
+		file.store_32(samples.size())
+
+
+func load_ghost(index: int) -> PackedFloat32Array:
+	var file := FileAccess.open(_ghost_path(index), FileAccess.READ)
+	if file == null or file.get_length() < 4:
+		return PackedFloat32Array()
+	var packed := file.get_buffer(file.get_length() - 4)
+	var count := file.get_32()
+	return packed.decompress(count * 4, FileAccess.COMPRESSION_ZSTD).to_float32_array()
+
+
+func _ghost_path(index: int) -> String:
+	return "%s/nivel_%d.bin" % [GHOST_DIR, index + 1]
 
 
 func save_data() -> void:
@@ -126,6 +175,7 @@ func save_data() -> void:
 	cfg.set_value("opciones", "invertir_x", invert_x)
 	cfg.set_value("opciones", "invertir_y", invert_y)
 	cfg.set_value("opciones", "datos_sensor", show_debug)
+	cfg.set_value("opciones", "fantasma", show_ghost)
 	cfg.set_value("opciones", "nombre", player_name)
 	cfg.set_value("opciones", "idioma", language)
 	cfg.save(SAVE_PATH)
@@ -148,5 +198,6 @@ func load_data() -> void:
 	invert_x = cfg.get_value("opciones", "invertir_x", invert_x)
 	invert_y = cfg.get_value("opciones", "invertir_y", invert_y)
 	show_debug = cfg.get_value("opciones", "datos_sensor", show_debug)
+	show_ghost = cfg.get_value("opciones", "fantasma", show_ghost)
 	player_name = cfg.get_value("opciones", "nombre", player_name)
 	language = cfg.get_value("opciones", "idioma", language)

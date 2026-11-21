@@ -5,6 +5,7 @@ const C_PANEL := Color(0.08, 0.06, 0.18, 0.94)
 const C_BORDER := Color(0.55, 0.5, 1.0)
 const C_ACCENT := Color(0.45, 1.0, 0.9)
 const C_MUTED := Color(0.72, 0.7, 0.88)
+const C_STAR := Color(1.0, 0.82, 0.25)
 const SECONDARY := &"SecondaryButton"
 
 
@@ -121,7 +122,8 @@ static func label(text: String, size := 30, color := Color.WHITE) -> Label:
 
 
 ## Panel centrado sobre un fondo oscurecido. `buttons` es una lista de [texto, Callable].
-static func overlay(title: String, subtitle: String, buttons: Array) -> Control:
+## `extra` (opcional) va bajo el título, por ejemplo las estrellas conseguidas.
+static func overlay(title: String, subtitle: String, buttons: Array, extra: Control = null) -> Control:
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 
@@ -141,6 +143,8 @@ static func overlay(title: String, subtitle: String, buttons: Array) -> Control:
 	panel.add_child(box)
 
 	box.add_child(label(title, 56, C_ACCENT))
+	if extra != null:
+		box.add_child(extra)
 	if subtitle != "":
 		box.add_child(label(subtitle, 30, C_MUTED))
 	box.add_child(spacer(8))
@@ -153,6 +157,35 @@ static func overlay(title: String, subtitle: String, buttons: Array) -> Control:
 	if first != null:
 		first.call_deferred("grab_focus")
 	return root
+
+
+## Fila de `slots` estrellas dibujadas (no depende de que la fuente tenga el carácter ★).
+## Las `count` primeras van rellenas; el resto, apagadas.
+static func stars(count: int, size := 40.0, slots := 3) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(size * 1.1 * slots, size)
+	c.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	c.draw.connect(func() -> void:
+		var step := c.size.x / slots
+		for i in slots:
+			var center := Vector2(step * (i + 0.5), c.size.y * 0.53)
+			var points := star_points(center, size * 0.5)
+			var lit := i < count
+			c.draw_colored_polygon(points, C_STAR if lit else Color(0.2, 0.17, 0.35, 0.9))
+			points.append(points[0])
+			c.draw_polyline(points, Color(0.02, 0.0, 0.06), 2.0, true)
+	)
+	return c
+
+
+static func star_points(center: Vector2, radius: float) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	for k in 10:
+		var r := radius if k % 2 == 0 else radius * 0.45
+		var angle := -PI / 2.0 + k * PI / 5.0
+		points.append(center + Vector2(cos(angle), sin(angle)) * r)
+	return points
 
 
 static func spacer(height: float) -> Control:
