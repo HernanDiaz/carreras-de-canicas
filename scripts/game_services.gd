@@ -19,14 +19,14 @@ const ANDROID_IDS := [
 ## Logros. La clave es también su identificador en App Store Connect; `android` es el que
 ## genera Play Console. Los textos de cada logro están en las dos consolas (no en el juego).
 const ACHIEVEMENTS := {
-	first_goal = {android = ""},     # Supera tu primer nivel
-	three_stars = {android = ""},    # Consigue 3 estrellas en un nivel
-	beat_ghost = {android = ""},     # Mejora un récord tuyo (bate a tu fantasma)
-	steady_hand = {android = ""},    # Supera un nivel del 5 al 9 sin caerte
-	close_call = {android = ""},     # Llega a la meta con menos de 3 segundos de margen
-	wifi_win = {android = ""},       # Gana una carrera Wi-Fi
-	all_levels = {android = ""},     # Supera los 9 niveles
-	all_stars = {android = ""},      # Consigue las 27 estrellas
+	first_goal = {android = "CgkI69erkqoTEAIQDQ"},     # Supera tu primer nivel
+	three_stars = {android = "CgkI69erkqoTEAIQDA"},    # Consigue 3 estrellas en un nivel
+	beat_ghost = {android = "CgkI69erkqoTEAIQDw"},     # Mejora un récord tuyo (bate a tu fantasma)
+	steady_hand = {android = "CgkI69erkqoTEAIQCw"},    # Supera un nivel del 5 al 9 sin caerte
+	close_call = {android = "CgkI69erkqoTEAIQDg"},     # Llega a la meta con menos de 3 segundos de margen
+	wifi_win = {android = "CgkI69erkqoTEAIQEA"},       # Gana una carrera Wi-Fi
+	all_levels = {android = "CgkI69erkqoTEAIQEQ"},     # Supera los 9 niveles
+	all_stars = {android = "CgkI69erkqoTEAIQEg"},      # Consigue las 27 estrellas
 }
 
 ## Cambia cuando se inicia sesión (o falla): el menú muestra u oculta los botones.
