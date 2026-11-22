@@ -29,6 +29,9 @@ var current_level := 0
 var unlocked := 1
 ## Mejor tiempo por nivel, en segundos. Clave: índice del nivel.
 var best_times := {}
+## Logros conseguidos (claves de GameServices.ACHIEVEMENTS). Se guardan aquí para enviarlos
+## a Game Center / Play Juegos aunque se consigan sin conexión o sin haber iniciado sesión.
+var achievements: Array[String] = []
 
 # Opciones
 var tilt_degrees := 20.0
@@ -39,6 +42,9 @@ var invert_y := false
 var show_debug := false
 ## Mostrar la canica fantasma de tu mejor vuelta.
 var show_ghost := true
+var music_on := true
+var sound_on := true
+var vibration_on := true
 var player_name := ""
 ## Idioma elegido a mano ("" = automático, el del sistema).
 var language := ""
@@ -139,6 +145,7 @@ func total_stars() -> int:
 func reset_progress() -> void:
 	unlocked = 1
 	best_times.clear()
+	# Los logros ya conseguidos no se pierden (en Game Center / Play Juegos tampoco).
 	for index in LEVELS.size():
 		DirAccess.remove_absolute(_ghost_path(index))
 	save_data()
@@ -170,12 +177,16 @@ func save_data() -> void:
 	cfg.set_value("progreso", "desbloqueados", unlocked)
 	for index in best_times:
 		cfg.set_value("records", str(index), best_times[index])
+	cfg.set_value("progreso", "logros", achievements)
 	cfg.set_value("opciones", "inclinacion", tilt_degrees)
 	cfg.set_value("opciones", "inclinacion_elegida", tilt_custom)
 	cfg.set_value("opciones", "invertir_x", invert_x)
 	cfg.set_value("opciones", "invertir_y", invert_y)
 	cfg.set_value("opciones", "datos_sensor", show_debug)
 	cfg.set_value("opciones", "fantasma", show_ghost)
+	cfg.set_value("opciones", "musica", music_on)
+	cfg.set_value("opciones", "sonidos", sound_on)
+	cfg.set_value("opciones", "vibracion", vibration_on)
 	cfg.set_value("opciones", "nombre", player_name)
 	cfg.set_value("opciones", "idioma", language)
 	cfg.save(SAVE_PATH)
@@ -190,6 +201,7 @@ func load_data() -> void:
 	if cfg.has_section("records"):
 		for key in cfg.get_section_keys("records"):
 			best_times[int(key)] = float(cfg.get_value("records", key))
+	achievements.assign(cfg.get_value("progreso", "logros", []))
 	# Si una actualización añade niveles, el siguiente al último superado queda desbloqueado.
 	for index in best_times:
 		unlocked = clampi(maxi(unlocked, index + 2), 1, LEVELS.size())
@@ -199,5 +211,8 @@ func load_data() -> void:
 	invert_y = cfg.get_value("opciones", "invertir_y", invert_y)
 	show_debug = cfg.get_value("opciones", "datos_sensor", show_debug)
 	show_ghost = cfg.get_value("opciones", "fantasma", show_ghost)
+	music_on = cfg.get_value("opciones", "musica", music_on)
+	sound_on = cfg.get_value("opciones", "sonidos", sound_on)
+	vibration_on = cfg.get_value("opciones", "vibracion", vibration_on)
 	player_name = cfg.get_value("opciones", "nombre", player_name)
 	language = cfg.get_value("opciones", "idioma", language)

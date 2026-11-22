@@ -41,6 +41,15 @@ var _standings_label: Label
 ## Fantasma de tu mejor vuelta (solo en partida de un jugador) y grabación de la vuelta actual.
 var _ghost: Ghost
 var _recorder := Ghost.Recorder.new()
+## Sonido de rodar (bucle cuyo volumen y tono siguen a la velocidad).
+var _roll_sound: AudioStreamPlayer
+## Último número de cuenta atrás / segundo que ha sonado, para no repetir.
+var _last_beep := -1
+var _last_tick := -1
+var _last_goal_tick := -1
+var _fall_sounded := false
+## Veces que has reaparecido en esta partida (logro "sin caerte").
+var _respawns := 0
 
 @onready var marble: Marble = $Marble
 @onready var camera: MarbleCamera = $Camera
@@ -94,6 +103,12 @@ func _ready() -> void:
 	debug_label.visible = GameState.show_debug
 
 	pause_button.pressed.connect(_pause)
+	Audio.play_music("game")
+	_roll_sound = Audio.make_loop("roll")
+	_roll_sound.volume_db = -60.0
+	add_child(_roll_sound)
+	_roll_sound.play()
+	marble.impact.connect(_on_impact)
 	calibrate_button.pressed.connect(_on_calibrate_pressed)
 
 	# La canica espera congelada en la salida hasta que acabe la cuenta atrás.
@@ -121,10 +136,15 @@ func _process(delta: float) -> void:
 		State.COUNTDOWN:
 			_countdown -= delta
 			if _countdown > 0.0:
+				if ceili(_countdown) != _last_beep:
+					_last_beep = ceili(_countdown)
+					Audio.play("beep")
 				_show_message("%s\n%d" % [tr(GameState.LEVELS[GameState.current_level].name), ceili(_countdown)], 0.2)
 			else:
 				state = State.PLAYING
 				marble.release()
+				Audio.play("go")
+				Audio.vibrate(30)
 				var show_hint := GameState.current_level == 0 and not race and not tilt_simulator.has_real_sensor()
 				var hint := "\n" + tr("MOUSE_HINT") if show_hint else ""
 				_show_message(tr("GO") + hint, 1.2)
@@ -135,6 +155,12 @@ func _process(delta: float) -> void:
 				_recorder.record(elapsed, marble)
 				if _ghost != null:
 					_ghost.seek(elapsed)
+			if time_left < 10.0 and ceili(time_left) != _last_tick:
+				_last_tick = ceili(time_left)
+				Audio.play("tick", -4.0, 0.8)
+			if not _fall_sounded and marble.global_position.y < level.lowest_y - 1.5:
+				_fall_sounded = true
+				Audio.play("fall")
 			if time_left == 0.0:
 				marble.stop_in_place()
 				_finish(false)
@@ -144,6 +170,7 @@ func _process(delta: float) -> void:
 			else:
 				_update_goal(delta)
 
+	_update_roll_sound(delta)
 	time_label.text = "%.1f" % time_left
 	time_label.modulate = Color.RED if time_left < 10.0 else Color.WHITE
 	if debug_label.visible:
@@ -220,9 +247,14 @@ func _update_goal(delta: float) -> void:
 			marble.celebrate(level.goal_center)
 			_finish(true)
 			return
-		_show_message(tr("HOLD_FMT") % ceili(GOAL_HOLD_TIME - _goal_hold), 0.2)
+		var left := ceili(GOAL_HOLD_TIME - _goal_hold)
+		if left != _last_goal_tick:
+			_last_goal_tick = left
+			Audio.play("tick", 0.0, 1.4)
+		_show_message(tr("HOLD_FMT") % left, 0.2)
 	elif _goal_hold > 0.0:
 		_goal_hold = 0.0
+		_last_goal_tick = -1
 		_show_message(tr("BACK_TO_GOAL"), 1.0)
 	level.set_goal_progress(_goal_hold / GOAL_HOLD_TIME)
 
@@ -230,6 +262,16 @@ func _update_goal(delta: float) -> void:
 ## `reason` es la clave de traducción del aviso (FELL, ACID...).
 func _respawn(reason: String) -> void:
 	_goal_hold = 0.0
+	_last_goal_tick = -1
+	_respawns += 1
+	if reason == "FELL":
+		if not _fall_sounded:
+			Audio.play("fall")
+	else:
+		Audio.play("zap")
+	_fall_sounded = false
+	Audio.vibrate(70)
+	get_tree().create_timer(0.15).timeout.connect(Audio.play.bind("respawn"))
 	marble.respawn(respawn_point)
 	camera.global_position = respawn_point + camera.offset
 	_show_message(tr(reason), 1.0)
@@ -247,8 +289,18 @@ func _finish(won: bool) -> void:
 		return
 	pause_button.disabled = true
 	if won:
+		Audio.play("win")
+		Audio.vibrate(120)
+		var had_record := GameState.best_times.has(GameState.current_level)
 		var record := GameState.complete_level(GameState.current_level, elapsed, _recorder.samples)
-		Leaderboards.submit(GameState.current_level, elapsed)
+		GameServices.submit(GameState.current_level, elapsed)
+		GameServices.check_progress()
+		if record and had_record:
+			GameServices.unlock("beat_ghost")
+		if _respawns == 0 and GameState.current_level >= 4:
+			GameServices.unlock("steady_hand")
+		if time_left < 3.0:
+			GameServices.unlock("close_call")
 		_show_message(tr("GOAL"), 1.3)
 		var subtitle := tr("TIME_FMT") % elapsed
 		if record:
@@ -261,13 +313,19 @@ func _finish(won: bool) -> void:
 		if GameState.has_next_level():
 			buttons.append([tr("NEXT_LEVEL"), func() -> void: GameState.play(GameState.current_level + 1)])
 		buttons.append([tr("RETRY"), _restart])
-		if Leaderboards.available():
+		if GameServices.available():
 			var index := GameState.current_level
-			buttons.append([tr("WORLD_RANKING"), func() -> void: Leaderboards.show_level(index)])
+			buttons.append([tr("WORLD_RANKING"), func() -> void: GameServices.show_level(index)])
 		buttons.append([tr("MENU"), GameState.go_to_menu])
 		var title := tr("LEVEL_CLEARED") if GameState.has_next_level() else tr("GAME_COMPLETED")
-		get_tree().create_timer(1.4).timeout.connect(func() -> void: _show_overlay(title, subtitle, buttons, UI.stars(stars, 64.0)))
+		get_tree().create_timer(1.4).timeout.connect(func() -> void:
+			_show_overlay(title, subtitle, buttons, UI.stars(stars, 64.0))
+			# Un "ding" por estrella, cada uno más agudo.
+			for i in stars:
+				get_tree().create_timer(0.2 + 0.25 * i).timeout.connect(Audio.play.bind("star", 0.0, 1.0 + 0.12 * i))
+		)
 	else:
+		Audio.play("lose")
 		_show_message(tr("TIME_UP"), 1.2)
 		get_tree().create_timer(1.2).timeout.connect(func() -> void:
 			_show_overlay(tr("TIME_UP"), tr("TRY_AGAIN"), [[tr("RETRY"), _restart], [tr("MENU"), GameState.go_to_menu]])
@@ -398,9 +456,12 @@ func _finish_race(won: bool) -> void:
 	if not is_inside_tree():
 		return
 	if won:
+		Audio.play("win")
+		Audio.vibrate(120)
 		_show_message(tr("GOAL"), 1.5)
 		Net.report_finish(elapsed)
 	else:
+		Audio.play("lose")
 		_show_message(tr("TIME_UP"), 1.5)
 		Net.report_finish(-1.0)
 	# Si eras el último en llegar, la carrera termina dentro de report_finish y la escena puede cambiar ya.
@@ -536,6 +597,8 @@ func _on_race_over() -> void:
 		return
 	_race_finished = true
 	_spectating = false
+	if Net.place_of(Net.my_id()) == 1 and Net.standings.size() >= 2:
+		GameServices.unlock("wifi_win")
 	for control in _spectator_hud:
 		control.queue_free()
 	_spectator_hud.clear()
@@ -573,6 +636,32 @@ func _on_connection_lost(reason: String) -> void:
 	marble.stop_in_place()
 	_show_overlay(tr("CONNECTION_LOST"), tr(reason), [[tr("MENU"), func() -> void: GameState.go_to_menu("multi")]])
 	_overlay.set_meta("final", true)
+
+
+# --- Sonido ------------------------------------------------------------------
+
+## Golpes y aterrizajes: más fuertes cuanto más brusco el cambio de velocidad.
+func _on_impact(strength: float, landing: bool) -> void:
+	if state != State.PLAYING:
+		return
+	var volume := linear_to_db(clampf(strength / 10.0, 0.15, 1.0))
+	if landing:
+		Audio.play("land", volume, randf_range(0.9, 1.1))
+	else:
+		Audio.play("hit", volume, randf_range(0.85, 1.15))
+	if strength > 7.0:
+		Audio.vibrate(25)
+
+
+## El sonido de rodar sube de volumen y tono con la velocidad (solo con la canica en el suelo).
+func _update_roll_sound(delta: float) -> void:
+	var speed := 0.0
+	if state == State.PLAYING and marble.is_grounded() and not marble.freeze:
+		speed = Vector2(marble.linear_velocity.x, marble.linear_velocity.z).length()
+	var amount := clampf(speed / 9.0, 0.0, 1.0)
+	var target_db := linear_to_db(maxf(amount * 0.7, 0.001))
+	_roll_sound.volume_db = lerpf(_roll_sound.volume_db, target_db, 1.0 - exp(-12.0 * delta))
+	_roll_sound.pitch_scale = 0.7 + amount * 0.8
 
 
 # --- Interfaz -----------------------------------------------------------------

@@ -37,8 +37,9 @@ config/icon="res://icon/icon_full.svg"
 [autoload]
 
 GameState="*res://scripts/game_state.gd"
+Audio="*res://scripts/audio.gd"
 Net="*res://scripts/net.gd"
-Leaderboards="*res://scripts/leaderboards.gd"
+GameServices="*res://scripts/game_services.gd"
 GodotPlayGameServices="*res://addons/GodotPlayGameServices/scripts/autoloads/godot_play_game_services.gd"
 
 [editor_plugins]

@@ -8,6 +8,7 @@ var _marble_visual: MeshInstance3D
 var _level_grid: GridContainer
 var _stars_total: Label
 var _ranking_button: Button
+var _achievements_button: Button
 var _reset_button: Button
 var _reset_armed := false
 var _name_edit: LineEdit
@@ -34,6 +35,7 @@ func _ready() -> void:
 	_build_background()
 	camera.look_at(pivot.global_position, Vector3.UP)
 
+	Audio.play_music("menu")
 	_screens.main = _build_main()
 	_screens.levels = _build_levels()
 	_screens.ranking = _build_ranking()
@@ -51,8 +53,9 @@ func _ready() -> void:
 		if _current == "lobby":
 			_refresh_lobby()
 	)
-	Leaderboards.availability_changed.connect(func() -> void:
-		_ranking_button.visible = Leaderboards.available()
+	GameServices.availability_changed.connect(func() -> void:
+		_ranking_button.visible = GameServices.available()
+		_achievements_button.visible = GameServices.available()
 	)
 	Net.joined.connect(func() -> void: _show("lobby"))
 	Net.left.connect(func(reason: String) -> void:
@@ -154,11 +157,14 @@ func _build_levels() -> Control:
 	var bottom_row := HBoxContainer.new()
 	bottom_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	bottom_row.add_theme_constant_override("separation", 16)
-	bottom_row.add_child(UI.button(tr("BACK"), func() -> void: _show("main")))
-	# Solo si hay clasificaciones en este aparato (Game Center / Play Juegos).
-	_ranking_button = UI.button(tr("WORLD_RANKING"), func() -> void: _show("ranking"))
-	_ranking_button.visible = Leaderboards.available()
+	bottom_row.add_child(UI.button(tr("BACK"), func() -> void: _show("main"), 300.0))
+	# Solo si hay clasificaciones y logros en este aparato (Game Center / Play Juegos).
+	_ranking_button = UI.button(tr("WORLD_RANKING"), func() -> void: _show("ranking"), 300.0)
+	_ranking_button.visible = GameServices.available()
 	bottom_row.add_child(_ranking_button)
+	_achievements_button = UI.button(tr("ACHIEVEMENTS"), GameServices.show_achievements, 300.0)
+	_achievements_button.visible = GameServices.available()
+	bottom_row.add_child(_achievements_button)
 	box.add_child(bottom_row)
 	return box.get_parent()
 
@@ -175,7 +181,7 @@ func _build_ranking() -> Control:
 	grid.add_theme_constant_override("v_separation", 16)
 	for i in GameState.LEVELS.size():
 		var index := i
-		var card := UI.button("%d. %s" % [i + 1, tr(GameState.LEVELS[i].name)], func() -> void: Leaderboards.show_level(index), 330.0)
+		var card := UI.button("%d. %s" % [i + 1, tr(GameState.LEVELS[i].name)], func() -> void: GameServices.show_level(index), 330.0)
 		card.custom_minimum_size.y = 110
 		card.add_theme_font_size_override("font_size", 26)
 		grid.add_child(card)
@@ -219,6 +225,8 @@ func _fill_level_grid() -> void:
 
 func _build_options() -> Control:
 	var box := _screen_box()
+	# Muchas opciones: menos separación para que quepan en la altura de un móvil.
+	box.add_theme_constant_override("separation", 8)
 	box.add_child(UI.label(tr("MENU_OPTIONS"), 56, UI.C_ACCENT))
 
 	var tilt_label := UI.label("", 28)
@@ -265,6 +273,23 @@ func _build_options() -> Control:
 		func(on: bool) -> void: GameState.show_ghost = on))
 	box.add_child(_check(tr("OPT_SENSOR"), GameState.show_debug,
 		func(on: bool) -> void: GameState.show_debug = on))
+	# Música, sonidos y vibración en una fila (más estrechos) para no alargar la pantalla.
+	var sound_row := HBoxContainer.new()
+	sound_row.add_theme_constant_override("separation", 12)
+	sound_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	sound_row.add_child(_check(tr("OPT_MUSIC"), GameState.music_on, func(on: bool) -> void:
+		GameState.music_on = on
+		Audio.apply_settings()
+	, 260.0))
+	sound_row.add_child(_check(tr("OPT_SOUND"), GameState.sound_on, func(on: bool) -> void:
+		GameState.sound_on = on
+		Audio.apply_settings()
+	, 260.0))
+	sound_row.add_child(_check(tr("OPT_VIBRATION"), GameState.vibration_on, func(on: bool) -> void:
+		GameState.vibration_on = on
+		Audio.vibrate(40)
+	, 260.0))
+	box.add_child(sound_row)
 
 	# Los dos últimos botones van en fila para que la pantalla quepa en la altura de un móvil.
 	var row := HBoxContainer.new()
@@ -488,8 +513,9 @@ func _screen_box() -> VBoxContainer:
 
 
 ## Botón de activar/desactivar que muestra "Sí"/"No" (más claro en pantalla táctil que una casilla).
-func _check(text: String, value: bool, on_toggled: Callable) -> Button:
-	var toggle := UI.button("", func() -> void: pass, 560.0)
+func _check(text: String, value: bool, on_toggled: Callable, min_width := 560.0) -> Button:
+	var toggle := UI.button("", func() -> void: pass, min_width)
+	toggle.custom_minimum_size.y = 68
 	toggle.toggle_mode = true
 	toggle.button_pressed = value
 	var refresh := func(on: bool) -> void:

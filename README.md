@@ -30,7 +30,9 @@ scripts/chaser.gd          Canica de acero enemiga
 scripts/marble.gd          Control por inclinación, hielo y plataformas móviles
 scripts/ui.gd              Tema visual y paneles de la interfaz
 scripts/ghost.gd           Canica fantasma (graba y repite la mejor vuelta)
-scripts/leaderboards.gd    Autoload: clasificaciones de Game Center y Play Games
+scripts/game_services.gd   Autoload: clasificaciones y logros de Game Center y Play Games
+scripts/audio.gd           Autoload: efectos, música y vibración
+sounds/                    Sonidos y músicas (generados con tools/make_sounds.py)
 scripts/tilt_simulator.gd  Simula la inclinación con el ratón en el PC
 shaders/track.gdshader     Material de las piezas (damero, flechas, franjas, bordes)
 levels/level_01.gd ...     Un script por nivel
@@ -54,10 +56,14 @@ Superar un nivel desbloquea el siguiente. El progreso y los récords se guardan 
 
 **Estrellas:** terminar da 1 estrella; bajar de los dos tiempos de `stars` de cada nivel (en `game_state.gd`) da la 2.ª y la 3.ª.
 **Fantasma:** al batir un récord se guarda la vuelta en `user://fantasmas/nivel_N.bin` y en la siguiente partida en solitario corres contra ella (se desactiva en Opciones).
-**Clasificaciones mundiales** (`scripts/leaderboards.gd`): una por nivel, solo partidas en solitario.
+**Clasificaciones mundiales** (`scripts/game_services.gd`): una por nivel, solo partidas en solitario.
 - iOS: Game Center, identificadores `level_1_time` … `level_9_time` (App Store Connect, tiempo en centésimas). El plugin GameCenterKit se compila en el workflow de iOS.
-- Android: Servicios de Juegos de Google Play (plugin en `addons/GodotPlayGameServices`, exportación con gradle). Game ID `664147782635`; los ID de los marcadores están en `leaderboards.gd` (tiempo en milésimas).
+- Android: Servicios de Juegos de Google Play (plugin en `addons/GodotPlayGameServices`, exportación con gradle). Game ID `664147782635`; los ID de los marcadores están en `game_services.gd` (tiempo en milésimas).
 - En el PC no hacen nada.
+
+**Logros** (`ACHIEVEMENTS` en `scripts/game_services.gd`): primera meta, 3 estrellas en un nivel, mejorar un récord, nivel 5–9 sin perder la canica, meta con menos de 3 s, ganar una carrera Wi‑Fi, los 9 niveles y las 27 estrellas. Se guardan en el progreso y se envían al iniciar sesión (los que ya correspondían por el progreso se conceden solos). En iOS el ID es la clave; en Android, el que da Play Console. Iconos: `python tools/make_achievement_icons.py` → `icon/achievements/`.
+
+**Sonido:** `python tools/make_sounds.py` genera todos los efectos y las dos músicas por síntesis (sin grabaciones ajenas) en `sounds/`. El sonido de rodar y las músicas se importan con *Loop Mode: Forward*. Música, sonidos y vibración se pueden quitar en Opciones.
 
 ## Añadir un nivel
 
@@ -185,7 +191,7 @@ Para jugar desde el PC contra un móvil, Windows puede pedir permiso en el corta
 ## Controles y opciones
 
 - Al empezar cada nivel hay una cuenta atrás. Cuando termina, la posición en la que sostienes el móvil cuenta como "plano". El botón **Recalibrar** vuelve a fijarla, y al salir de la pausa se recalibra sola.
-- En **Opciones** puedes cambiar la sensibilidad (inclinación máxima), invertir cada eje y mostrar los datos del sensor.
+- En **Opciones** puedes cambiar la sensibilidad (inclinación máxima), invertir cada eje, mostrar los datos del sensor y quitar la música, los sonidos o la vibración.
 - La inclinación máxima es **automática** mientras no la cambies: 26° en móviles (menos de 7,5") y 20° en tablets. El botón **Auto** vuelve al valor recomendado.
 - La respuesta a la inclinación es curva: los primeros grados empujan poco, para tener control fino, y la fuerza crece rápido hasta el máximo. Se ajusta con `response_exponent` en `scripts/marble.gd`.
 - Si el móvil no tiene sensor de gravedad, se usa el acelerómetro con un filtro más fuerte contra el temblor de la mano. "Mostrar datos del sensor" indica qué sensor se está usando.

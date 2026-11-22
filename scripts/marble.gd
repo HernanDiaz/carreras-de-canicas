@@ -25,6 +25,13 @@ extends RigidBody3D
 @export var invert_x := false
 @export var invert_y := false
 
+## Golpe contra algo (pared, otra canica) o aterrizaje: `strength` es el cambio brusco de
+## velocidad en m/s y `landing` dice si ha sido sobre todo vertical (caer al suelo).
+signal impact(strength: float, landing: bool)
+
+## Cambio de velocidad mínimo (m/s, sin contar la gravedad) que cuenta como golpe.
+const IMPACT_THRESHOLD := 2.2
+
 var camera: Camera3D
 ## Sustituye al sensor en el PC (arrastrar con el ratón).
 var tilt_simulator: TiltSimulator
@@ -42,6 +49,10 @@ var _sensor := Vector3.ZERO
 var _sensor_source := ""
 var _pending_respawn: Variant = null
 var _tween: Tween
+var _last_velocity := Vector3.ZERO
+## Fotogramas en los que no se detectan golpes (tras reaparecer, la velocidad cambia de golpe).
+var _impact_mute := 0
+var _impact_cooldown := 0.0
 
 
 ## Guarda la posición actual del móvil como "plano".
@@ -62,6 +73,7 @@ func respawn(pos: Vector3) -> void:
 	freeze = false
 	_pending_respawn = pos
 	sleeping = false
+	_impact_mute = 3
 
 
 ## Devuelve la canica a la física y activa los controles (inicio de partida).
@@ -119,9 +131,14 @@ static func shape_tilt(v: Vector2, dead: float, exponent: float) -> Vector2:
 	return v / amount * pow(t, exponent)
 
 
+func is_grounded() -> bool:
+	return _grounded
+
+
 func _physics_process(delta: float) -> void:
 	_update_sensor(delta)
 	_grounded = _check_grounded()
+	_detect_impact(delta)
 	if _grounded and _ground_velocity != Vector3.ZERO:
 		# Una bola sobre una plataforma que acelera rueda hacia atrás y se cae;
 		# en los juegos se "pega" a la plataforma igualando su velocidad.
@@ -147,6 +164,23 @@ func _physics_process(delta: float) -> void:
 	var flat_velocity := Vector3(linear_velocity.x, 0.0, linear_velocity.z)
 	if flat_velocity.dot(dir.normalized()) < max_speed:
 		apply_central_force(dir * roll_force * _control_factor())
+
+
+func _detect_impact(delta: float) -> void:
+	_impact_cooldown = maxf(_impact_cooldown - delta, 0.0)
+	var velocity := linear_velocity
+	var change := velocity - _last_velocity - get_gravity() * delta
+	_last_velocity = velocity
+	if freeze or not visible or _pending_respawn != null:
+		_impact_mute = 2
+		return
+	if _impact_mute > 0:
+		_impact_mute -= 1
+		return
+	var strength := change.length()
+	if strength >= IMPACT_THRESHOLD and _impact_cooldown == 0.0:
+		_impact_cooldown = 0.08
+		impact.emit(strength, change.y > 0.0 and change.y > Vector2(change.x, change.z).length())
 
 
 func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
