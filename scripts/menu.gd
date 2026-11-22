@@ -7,6 +7,7 @@ var _t := 0.0
 var _marble_visual: MeshInstance3D
 var _level_grid: GridContainer
 var _stars_total: Label
+var _ranking_button: Button
 var _reset_button: Button
 var _reset_armed := false
 var _name_edit: LineEdit
@@ -35,6 +36,7 @@ func _ready() -> void:
 
 	_screens.main = _build_main()
 	_screens.levels = _build_levels()
+	_screens.ranking = _build_ranking()
 	_screens.options = _build_options()
 	_screens.multi = _build_multi()
 	_screens.lobby = _build_lobby()
@@ -48,6 +50,9 @@ func _ready() -> void:
 	Net.players_changed.connect(func() -> void:
 		if _current == "lobby":
 			_refresh_lobby()
+	)
+	Leaderboards.availability_changed.connect(func() -> void:
+		_ranking_button.visible = Leaderboards.available()
 	)
 	Net.joined.connect(func() -> void: _show("lobby"))
 	Net.left.connect(func(reason: String) -> void:
@@ -77,6 +82,8 @@ func _notification(what: int) -> void:
 			get_tree().quit()
 		elif _current == "lobby":
 			_leave_lobby()
+		elif _current == "ranking":
+			_show("levels")
 		else:
 			_show("main")
 
@@ -144,7 +151,37 @@ func _build_levels() -> Control:
 	_level_grid.add_theme_constant_override("v_separation", 16)
 	box.add_child(_level_grid)
 	box.add_child(UI.spacer(8))
-	var back := UI.button(tr("BACK"), func() -> void: _show("main"))
+	var bottom_row := HBoxContainer.new()
+	bottom_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	bottom_row.add_theme_constant_override("separation", 16)
+	bottom_row.add_child(UI.button(tr("BACK"), func() -> void: _show("main")))
+	# Solo si hay clasificaciones en este aparato (Game Center / Play Juegos).
+	_ranking_button = UI.button(tr("WORLD_RANKING"), func() -> void: _show("ranking"))
+	_ranking_button.visible = Leaderboards.available()
+	bottom_row.add_child(_ranking_button)
+	box.add_child(bottom_row)
+	return box.get_parent()
+
+
+## Elige de qué nivel ver la clasificación mundial (se abre la pantalla del sistema).
+func _build_ranking() -> Control:
+	var box := _screen_box()
+	var title := UI.label(tr("WORLD_RANKING"), 56, UI.C_ACCENT)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	box.add_child(title)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 16)
+	grid.add_theme_constant_override("v_separation", 16)
+	for i in GameState.LEVELS.size():
+		var index := i
+		var card := UI.button("%d. %s" % [i + 1, tr(GameState.LEVELS[i].name)], func() -> void: Leaderboards.show_level(index), 330.0)
+		card.custom_minimum_size.y = 110
+		card.add_theme_font_size_override("font_size", 26)
+		grid.add_child(card)
+	box.add_child(grid)
+	box.add_child(UI.spacer(8))
+	var back := UI.button(tr("BACK"), func() -> void: _show("levels"))
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	box.add_child(back)
 	return box.get_parent()
