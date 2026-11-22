@@ -157,29 +157,64 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             PROVISIONING_PROFILE_SPECIFIER=""
 
+      # Al compilar sin firmar, los derechos (entitlements) del proyecto, como Game Center, no
+      # quedan en el binario, y al exportar solo se conservan los que ya lleva. Por eso se firma
+      # aquí el archivo con una firma local ("ad hoc") que los incluye; al exportar se sustituye
+      # por la firma de distribución manteniendo los derechos.
+      - name: Añadir los derechos (entitlements) al archivo
+        run: |
+          app=$(ls -d "build/ios/${APP_NAME}.xcarchive/Products/Applications/"*.app)
+          ent=$(find "build/ios" -maxdepth 2 -name "*.entitlements" | head -1)
+          if [ -z "$ent" ]; then
+            echo "::error::Godot no ha generado el archivo .entitlements"
+            exit 1
+          fi
+          echo "Derechos ($ent):"; cat "$ent"
+          /usr/libexec/PlistBuddy -c "Print :com.apple.developer.game-center" "$ent"
+          if [ -d "$app/Frameworks" ]; then
+            find "$app/Frameworks" -maxdepth 1 \( -name "*.framework" -o -name "*.dylib" \) \
+              -exec codesign --force --sign - --timestamp=none {} \;
+          fi
+          codesign --force --sign - --timestamp=none --entitlements "$ent" "$app"
+          codesign -d --entitlements - "$app"
+
+      # Primero se exporta el .ipa firmado y se comprueba que lleva Game Center (si no, Apple
+      # no deja enviar la versión a revisión); solo entonces se sube.
       - name: Firmar y subir a TestFlight
         run: |
-          cat > ExportOptions.plist <<EOF
+          for dest in export upload; do
+          cat > ExportOptions-$dest.plist <<EOF
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
             <key>method</key><string>app-store-connect</string>
-            <key>destination</key><string>upload</string>
+            <key>destination</key><string>$dest</string>
             <key>teamID</key><string>${APPLE_TEAM_ID}</string>
             <key>signingStyle</key><string>automatic</string>
             <key>uploadSymbols</key><true/>
           </dict>
           </plist>
           EOF
-          xcodebuild -exportArchive \
-            -archivePath "build/ios/${APP_NAME}.xcarchive" \
-            -exportOptionsPlist ExportOptions.plist \
-            -exportPath build/ios/export \
-            -allowProvisioningUpdates \
-            -authenticationKeyPath "$ASC_KEY_PATH" \
-            -authenticationKeyID "$ASC_KEY_ID" \
-            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          done
+          export_archive() {
+            xcodebuild -exportArchive \
+              -archivePath "build/ios/${APP_NAME}.xcarchive" \
+              -exportOptionsPlist "ExportOptions-$1.plist" \
+              -exportPath "build/ios/$1" \
+              -allowProvisioningUpdates \
+              -authenticationKeyPath "$ASC_KEY_PATH" \
+              -authenticationKeyID "$ASC_KEY_ID" \
+              -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+          }
+          export_archive export
+          mkdir -p build/ios/check && unzip -q -o build/ios/export/*.ipa -d build/ios/check
+          codesign -d --entitlements - build/ios/check/Payload/*.app 2>&1 | tee build/ios/check/ent.txt
+          if ! grep -q "com.apple.developer.game-center" build/ios/check/ent.txt; then
+            echo "::error::La app exportada no lleva el derecho de Game Center"
+            exit 1
+          fi
+          export_archive upload
           echo "Subido. En unos minutos aparecerá en App Store Connect → TestFlight (compilación ${{ github.run_number }})."
 
       - name: Borrar la clave
