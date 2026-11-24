@@ -292,6 +292,7 @@ func _finish(won: bool) -> void:
 		Audio.play("win")
 		Audio.vibrate(120)
 		var had_record := GameState.best_times.has(GameState.current_level)
+		var previous: float = GameState.best_times.get(GameState.current_level, 0.0)
 		var record := GameState.complete_level(GameState.current_level, elapsed, _recorder.samples)
 		GameServices.submit(GameState.current_level, elapsed)
 		GameServices.check_progress()
@@ -303,8 +304,12 @@ func _finish(won: bool) -> void:
 			GameServices.unlock("close_call")
 		_show_message(tr("GOAL"), 1.3)
 		var subtitle := tr("TIME_FMT") % elapsed
+		# Diferencia con el récord anterior: "-0.84" si lo has batido, "+1.20" si no.
+		var diff := "  (%+.2f)" % (elapsed - previous) if had_record else ""
 		if record:
-			subtitle += "\n" + tr("NEW_RECORD")
+			subtitle += "\n" + tr("NEW_RECORD") + diff
+		elif had_record:
+			subtitle += "\n" + tr("RECORD_FMT") % previous + diff
 		var stars := GameState.stars_for(GameState.current_level, elapsed)
 		if stars < 3:
 			var limits: Array = GameState.LEVELS[GameState.current_level].stars
