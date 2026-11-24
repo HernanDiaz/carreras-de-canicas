@@ -6,6 +6,10 @@ const GHOST_DIR := "user://fantasmas"
 const GAME_SCENE := "res://scenes/game.tscn"
 const MENU_SCENE := "res://scenes/menu.tscn"
 
+## El progreso (récords, logros o un reinicio) ha cambiado: se sube a la nube y el menú
+## se actualiza. También llega cuando se recibe progreso nuevo de la nube.
+signal progress_changed
+
 ## Para añadir un nivel: crea su script en res://levels/, añádelo aquí y pon su nombre
 ## (clave LEVEL_N) en locale/translations.csv. `name` es la clave de traducción: usa tr(name).
 ## `stars` = tiempos máximos para conseguir 3 y 2 estrellas (terminarlo ya da 1).
@@ -32,6 +36,11 @@ var best_times := {}
 ## Logros conseguidos (claves de GameServices.ACHIEVEMENTS). Se guardan aquí para enviarlos
 ## a Game Center / Play Juegos aunque se consigan sin conexión o sin haber iniciado sesión.
 var achievements: Array[String] = []
+## Veces que se ha reiniciado el progreso (en cualquier aparato). Sirve para que, al mezclar con
+## la copia de la nube, un reinicio no se deshaga con los récords antiguos de otro aparato.
+var resets := 0
+## Hasta qué punto de REVIEW_AFTER_LEVELS se ha pedido ya la valoración.
+var review_stage := 0
 
 # Opciones
 var tilt_degrees := 20.0
@@ -120,6 +129,7 @@ func complete_level(index: int, seconds: float, ghost := PackedFloat32Array()) -
 		if not ghost.is_empty():
 			save_ghost(index, ghost)
 	save_data()
+	progress_changed.emit()
 	return record
 
 
@@ -143,12 +153,65 @@ func total_stars() -> int:
 
 
 func reset_progress() -> void:
+	resets += 1
+	_clear_records()
+	save_data()
+	progress_changed.emit()
+
+
+func _clear_records() -> void:
 	unlocked = 1
 	best_times.clear()
 	# Los logros ya conseguidos no se pierden (en Game Center / Play Juegos tampoco).
 	for index in LEVELS.size():
 		DirAccess.remove_absolute(_ghost_path(index))
-	save_data()
+
+
+## Progreso que se guarda en la nube (iCloud / Juegos guardados de Play Juegos), en JSON.
+## Las opciones no: cada aparato tiene las suyas. Los fantasmas tampoco (ocupan mucho).
+func cloud_data() -> String:
+	var times := {}
+	for index in best_times:
+		times[str(index)] = best_times[index]
+	return JSON.stringify({version = 1, resets = resets, times = times, achievements = achievements})
+
+
+## Mezcla el progreso de la nube con el de este aparato: se queda con el mejor tiempo de
+## cada nivel y con todos los logros. Devuelve true si ha cambiado algo aquí.
+func merge_cloud(text: String) -> bool:
+	var json := JSON.new()
+	if text == "" or json.parse(text) != OK or not json.data is Dictionary:
+		return false
+	var data: Dictionary = json.data
+	var changed := false
+	var remote_achievements: Variant = data.get("achievements", [])
+	if remote_achievements is Array:
+		for key: Variant in remote_achievements:
+			if key is String and not achievements.has(key):
+				achievements.append(key)
+				changed = true
+	var remote_resets := int(data.get("resets", 0))
+	if remote_resets > resets:
+		# Se reinició el progreso en otro aparato después de lo último que hay aquí.
+		resets = remote_resets
+		_clear_records()
+		changed = true
+	var times: Variant = data.get("times", {})
+	if remote_resets == resets and times is Dictionary:
+		for key: Variant in times:
+			var index := int(key)
+			var seconds := float(times[key])
+			if index < 0 or index >= LEVELS.size() or seconds <= 0.0:
+				continue
+			if not best_times.has(index) or seconds < best_times[index]:
+				best_times[index] = seconds
+				changed = true
+	if changed:
+		for index in best_times:
+			unlocked = clampi(maxi(unlocked, index + 2), 1, LEVELS.size())
+		save_data()
+		progress_changed.emit()
+	return changed
 
 
 func save_ghost(index: int, samples: PackedFloat32Array) -> void:
@@ -178,6 +241,8 @@ func save_data() -> void:
 	for index in best_times:
 		cfg.set_value("records", str(index), best_times[index])
 	cfg.set_value("progreso", "logros", achievements)
+	cfg.set_value("progreso", "reinicios", resets)
+	cfg.set_value("progreso", "valoracion", review_stage)
 	cfg.set_value("opciones", "inclinacion", tilt_degrees)
 	cfg.set_value("opciones", "inclinacion_elegida", tilt_custom)
 	cfg.set_value("opciones", "invertir_x", invert_x)
@@ -202,6 +267,8 @@ func load_data() -> void:
 		for key in cfg.get_section_keys("records"):
 			best_times[int(key)] = float(cfg.get_value("records", key))
 	achievements.assign(cfg.get_value("progreso", "logros", []))
+	resets = cfg.get_value("progreso", "reinicios", 0)
+	review_stage = cfg.get_value("progreso", "valoracion", 0)
 	# Si una actualización añade niveles, el siguiente al último superado queda desbloqueado.
 	for index in best_times:
 		unlocked = clampi(maxi(unlocked, index + 2), 1, LEVELS.size())

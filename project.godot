@@ -44,7 +44,7 @@ GodotPlayGameServices="*res://addons/GodotPlayGameServices/scripts/autoloads/god
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/GodotPlayGameServices/plugin.cfg")
+enabled=PackedStringArray("res://addons/GodotPlayGameServices/plugin.cfg", "res://addons/marble_extras/plugin.cfg")
 
 [display]
 

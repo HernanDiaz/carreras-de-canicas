@@ -21,18 +21,22 @@ const DEVICES := {
 const CAPTIONS := {
 	"en": [
 		"Watch out for hungry worms",
+		"Earn 3 stars on every level",
+		"Race against your own ghost",
 		"Dodge crushers and conveyor belts",
+		"World leaderboards and achievements",
 		"Spiral slides and wild descents",
 		"Brave the wind and the maze",
-		"Climb the great tower",
 		"Race your friends over Wi‑Fi",
 	],
 	"es": [
 		"Cuidado con los gusanos hambrientos",
+		"Consigue 3 estrellas en cada nivel",
+		"Compite contra tu propio fantasma",
 		"Esquiva prensas y cintas transportadoras",
+		"Clasificaciones mundiales y logros",
 		"Toboganes en espiral y bajadas de vértigo",
 		"Desafía al viento y al laberinto",
-		"Sube a la gran torre",
 		"Echa carreras con tus amigos por Wi‑Fi",
 	],
 }
@@ -41,20 +45,30 @@ const CAPTIONS := {
 ## (`time`) y cuándo se toma: al llegar el nivel a `shoot_at` segundos, cuando el gusano está
 ## junto a la canica (`worm`) o, si no, a los 60 fotogramas. Renderizar a este tamaño es lento,
 ## así que contar fotogramas no sirve para momentos concretos.
+## `result` muestra la pantalla de nivel superado con 3 estrellas; `ghost`, la canica fantasma
+## en esa posición; `menu`, la selección de niveles con estrellas (con progreso inventado, que
+## no se guarda). `ui` = con la interfaz aunque el dispositivo no la lleve (Google Play).
 const SHOTS := [
 	# El gusano sale del agujero y va a por la canica (se toma antes de que se la coma)
 	{level = 6, marble = Vector3(0.2, -3.5, -22.2), worm = true},
+	# Nivel superado: 3 estrellas y récord, sobre el tobogán en espiral
+	{level = 6, marble = Vector3(25.24, -10.18, -134.8), result = true, ui = true},
+	# Carrera contra tu fantasma en el pasillo de prensas
+	{level = 6, marble = Vector3(0, -3.5, -47.4), ghost = Vector3(0.15, -3.5, -49.3), time = 0.6},
 	# Pasillo de prensas: la del medio está cayendo
 	{level = 6, marble = Vector3(0, -3.5, -52.25), time = 2.43},
+	# Selección de niveles con estrellas, clasificación mundial y logros
+	{menu = true, ui = true},
 	# Tobogán en espiral bajando hacia la meta
 	{level = 6, marble = Vector3(25.24, -10.18, -134.8)},
 	# Cresta con viento de costado y el laberinto detrás (en plena racha)
 	{level = 7, marble = Vector3(8.5, -5.0, -60.5), time = 0.4, shoot_at = 1.6},
-	# Subida a la torre esquivando barriles
-	{level = 8, marble = Vector3(1.2, 2.7, -9.5), time = 1.0},
 	# Carrera en la cima de la torre
 	{level = 8, marble = Vector3(20.5, 10.5, -44.5), rivals = true},
 ]
+
+## Progreso inventado para la captura de la selección de niveles (segundos por nivel).
+const MENU_TIMES := {0: 21.4, 1: 40.8, 2: 20.9, 3: 33.1, 4: 31.7, 5: 68.2, 6: 79.5}
 
 ## Rivales de la captura de carrera, colocados respecto a la canica.
 const RIVALS := [
@@ -112,8 +126,16 @@ func _next() -> void:
 	_viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS
 	root.add_child(_viewport)
 
-	root.get_node("GameState").current_level = shot.level
-	_scene = load("res://scenes/game.tscn").instantiate()
+	var game_state := root.get_node("GameState")
+	if shot.get("menu", false):
+		# Solo en memoria: la captura no guarda nada (el menú no llama a save_data).
+		game_state.best_times = MENU_TIMES.duplicate()
+		game_state.unlocked = MENU_TIMES.size() + 1
+		game_state.open_screen = "levels"
+		_scene = load("res://scenes/menu.tscn").instantiate()
+	else:
+		game_state.current_level = shot.level
+		_scene = load("res://scenes/game.tscn").instantiate()
 	_viewport.add_child(_scene)
 	if device.get("caption", true):
 		_add_caption(CAPTIONS[job.locale][job.index], device.ui.x)
@@ -130,6 +152,15 @@ func _process(_delta: float) -> bool:
 	_frame += 1
 	var shot: Dictionary = SHOTS[_jobs[_job].index]
 
+	if shot.get("menu", false):
+		if _frame == 2:
+			# En el PC no hay Game Center ni Play Juegos: se enseñan los botones igualmente.
+			_scene._ranking_button.visible = true
+			_scene._achievements_button.visible = true
+		if _frame >= 60:
+			_save_shot()
+		return false
+
 	if not _placed:
 		_scene._countdown = 0.0
 		if _scene.state == _scene.State.PLAYING:
@@ -139,13 +170,17 @@ func _process(_delta: float) -> bool:
 		return false
 
 	if _frame >= 20 and _ready_to_shoot(shot):
-		var job: Dictionary = _jobs[_job]
-		var path := "%s/%s/%s_%d.png" % [OUT_DIR, job.locale, job.device, job.index + 1]
-		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(path.get_base_dir()))
-		_viewport.get_texture().get_image().save_png(path)
-		print("  %s" % path)
-		_next()
+		_save_shot()
 	return false
+
+
+func _save_shot() -> void:
+	var job: Dictionary = _jobs[_job]
+	var path := "%s/%s/%s_%d.png" % [OUT_DIR, job.locale, job.device, job.index + 1]
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(path.get_base_dir()))
+	_viewport.get_texture().get_image().save_png(path)
+	print("  %s" % path)
+	_next()
 
 
 func _ready_to_shoot(shot: Dictionary) -> bool:
@@ -172,10 +207,23 @@ func _place(shot: Dictionary) -> void:
 	var camera: Camera3D = _scene.camera
 	camera.global_position = shot.marble + camera.offset
 	_scene.message_label.visible = false
-	_scene.hud.visible = DEVICES[_jobs[_job].device].get("hud", true)
+	_scene.hud.visible = DEVICES[_jobs[_job].device].get("hud", true) or shot.get("ui", false)
 	_scene._message_time = 0.0
 	if shot.has("time"):
 		_scene.level._time = shot.time
+	if shot.has("ghost"):
+		var mesh: Mesh = (marble.get_node("Mesh") as MeshInstance3D).mesh
+		var q := Quaternion(Vector3(0.3, 1.0, 0.2).normalized(), 2.0)
+		var sample := [shot.ghost.x, shot.ghost.y, shot.ghost.z, q.x, q.y, q.z, q.w, 1.0]
+		var ghost := Ghost.from_samples(PackedFloat32Array(sample + sample), mesh)
+		_scene.add_child(ghost)
+		ghost.seek(0.0)
+	if shot.get("result", false):
+		var subtitle := tr("TIME_FMT") % 21.37 + "
+" + tr("NEW_RECORD")
+		var buttons := [[tr("NEXT_LEVEL"), func() -> void: pass], [tr("RETRY"), func() -> void: pass],
+				[tr("WORLD_RANKING"), func() -> void: pass], [tr("MENU"), func() -> void: pass]]
+		_scene._show_overlay(tr("LEVEL_CLEARED"), subtitle, buttons, UI.stars(3, 64.0))
 	if shot.get("rivals", false):
 		var mesh: Mesh = (marble.get_node("Mesh") as MeshInstance3D).mesh
 		for rival in RIVALS:

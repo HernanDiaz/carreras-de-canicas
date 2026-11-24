@@ -13,7 +13,11 @@ var _samples := PackedFloat32Array()
 
 ## Carga el fantasma guardado del nivel. Devuelve null si no hay ninguno.
 static func load_for(level_index: int, mesh: Mesh) -> Ghost:
-	var samples := GameState.load_ghost(level_index)
+	return from_samples(GameState.load_ghost(level_index), mesh)
+
+
+## Fantasma a partir de unas muestras (también lo usan las capturas de la tienda).
+static func from_samples(samples: PackedFloat32Array, mesh: Mesh) -> Ghost:
 	if samples.size() < STRIDE * 2:
 		return null
 	var ghost := Ghost.new()

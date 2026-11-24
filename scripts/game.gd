@@ -323,6 +323,8 @@ func _finish(won: bool) -> void:
 			# Un "ding" por estrella, cada uno más agudo.
 			for i in stars:
 				get_tree().create_timer(0.2 + 0.25 * i).timeout.connect(Audio.play.bind("star", 0.0, 1.0 + 0.12 * i))
+			# Valoración en la tienda (solo al superar 3 niveles y al terminarlos todos).
+			get_tree().create_timer(1.5).timeout.connect(GameServices.maybe_request_review)
 		)
 	else:
 		Audio.play("lose")

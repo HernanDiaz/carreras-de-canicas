@@ -63,6 +63,10 @@ Superar un nivel desbloquea el siguiente. El progreso y los récords se guardan 
 
 **Logros** (`ACHIEVEMENTS` en `scripts/game_services.gd`): primera meta, 3 estrellas en un nivel, mejorar un récord, nivel 5–9 sin perder la canica, meta con menos de 3 s, ganar una carrera Wi‑Fi, los 9 niveles y las 27 estrellas. Se guardan en el progreso y se envían al iniciar sesión (los que ya correspondían por el progreso se conceden solos). En iOS el ID es la clave; en Android, el que da Play Console. Iconos: `python tools/make_achievement_icons.py` → `icon/achievements/`.
 
+**Progreso en la nube**: los récords, los logros y los reinicios del progreso se guardan también en iCloud (iOS, almacén clave-valor) y en los Juegos guardados de Play Juegos (Android, al iniciar sesión). Al abrir el juego se mezclan con los del aparato (el mejor tiempo de cada nivel y todos los logros), así que no se pierde nada al cambiar de móvil o reinstalar. Las opciones y los fantasmas no se suben. Código en `GameState.cloud_data()/merge_cloud()` y `GameServices`.
+
+**Valoración en la tienda**: al superar por primera vez 3 niveles y al terminar los 9 se pide la valoración con la ventana del sistema (iOS y Google Play deciden si la muestran; en TestFlight y en pruebas internas puede no salir). En Android se usa la biblioteca `com.google.android.play:review`, que añade `addons/marble_extras` al exportar, desde GDScript con `JavaClassWrapper`. En iOS, `ios_native/` (clase `IosExtras`) se compila en el workflow junto al plugin de Game Center.
+
 **Sonido:** `python tools/make_sounds.py` genera todos los efectos y las dos músicas por síntesis (sin grabaciones ajenas) en `sounds/`. El sonido de rodar y las músicas se importan con *Loop Mode: Forward*. Música, sonidos y vibración se pueden quitar en Opciones.
 
 ## Añadir un nivel
@@ -153,6 +157,7 @@ Notas:
 - **Búsqueda de partidas en iPhone:** "Unirse a …" necesita que Apple conceda el permiso *multicast* (`com.apple.developer.networking.multicast`), que se pide en developer.apple.com/contact/request/networking-multicast. Mientras tanto funciona **Unirse por IP**. iOS pedirá permiso de "red local" la primera vez.
 - **Botón Salir:** en iOS no aparece, porque las apps no pueden cerrarse solas.
 - **Ajustes de iOS:** están en el preset "iOS" de `export_presets.cfg`. El Team ID no se guarda en el repositorio: el workflow lo rellena desde el secreto.
+- **Derechos (entitlements):** el archivo se compila sin firmar, así que el workflow firma el `.xcarchive` en local con los derechos que genera Godot (Game Center) más iCloud (`com.apple.developer.ubiquity-kvstore-identifier`) antes de exportarlo, y comprueba que el `.ipa` los lleva. La capacidad iCloud del App ID la activa `ios_native/enable_capability.py` con la clave de API.
 
 ## Icono
 

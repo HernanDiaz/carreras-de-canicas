@@ -53,6 +53,11 @@ func _ready() -> void:
 		if _current == "lobby":
 			_refresh_lobby()
 	)
+	# Puede llegar progreso de la nube (otro aparato) con el menú abierto.
+	GameState.progress_changed.connect(func() -> void:
+		if _current == "levels":
+			_fill_level_grid()
+	)
 	GameServices.availability_changed.connect(func() -> void:
 		_ranking_button.visible = GameServices.available()
 		_achievements_button.visible = GameServices.available()
