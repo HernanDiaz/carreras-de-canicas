@@ -215,7 +215,9 @@ func _place(shot: Dictionary) -> void:
 		var mesh: Mesh = (marble.get_node("Mesh") as MeshInstance3D).mesh
 		var q := Quaternion(Vector3(0.3, 1.0, 0.2).normalized(), 2.0)
 		var sample := [shot.ghost.x, shot.ghost.y, shot.ghost.z, q.x, q.y, q.z, q.w, 1.0]
-		var ghost := Ghost.from_samples(PackedFloat32Array(sample + sample), mesh)
+		# Se carga en tiempo de ejecución: Ghost usa el autoload GameState, que este script
+		# (lanzado con -s) no conoce al compilarse.
+		var ghost: Node3D = load("res://scripts/ghost.gd").from_samples(PackedFloat32Array(sample + sample), mesh)
 		_scene.add_child(ghost)
 		ghost.seek(0.0)
 	if shot.get("result", false):
@@ -223,7 +225,7 @@ func _place(shot: Dictionary) -> void:
 " + tr("NEW_RECORD")
 		var buttons := [[tr("NEXT_LEVEL"), func() -> void: pass], [tr("RETRY"), func() -> void: pass],
 				[tr("WORLD_RANKING"), func() -> void: pass], [tr("MENU"), func() -> void: pass]]
-		_scene._show_overlay(tr("LEVEL_CLEARED"), subtitle, buttons, UI.stars(3, 64.0))
+		_scene._show_overlay(tr("LEVEL_CLEARED"), subtitle, buttons, load("res://scripts/ui.gd").stars(3, 64.0))
 	if shot.get("rivals", false):
 		var mesh: Mesh = (marble.get_node("Mesh") as MeshInstance3D).mesh
 		for rival in RIVALS:
