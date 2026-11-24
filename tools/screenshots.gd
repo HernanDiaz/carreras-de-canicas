@@ -48,17 +48,19 @@ const CAPTIONS := {
 ## `result` muestra la pantalla de nivel superado con 3 estrellas; `ghost`, la canica fantasma
 ## en esa posición; `menu`, la selección de niveles con estrellas (con progreso inventado, que
 ## no se guarda). `ui` = con la interfaz aunque el dispositivo no la lleve (Google Play).
+## `zoom` agranda el tamaño virtual de la interfaz (se ve más pequeña) para que el texto de
+## abajo no tape los botones.
 const SHOTS := [
 	# El gusano sale del agujero y va a por la canica (se toma antes de que se la coma)
 	{level = 6, marble = Vector3(0.2, -3.5, -22.2), worm = true},
 	# Nivel superado: 3 estrellas y récord, sobre el tobogán en espiral
-	{level = 6, marble = Vector3(25.24, -10.18, -134.8), result = true, ui = true},
+	{level = 6, marble = Vector3(25.24, -10.18, -134.8), result = true, ui = true, zoom = 1.25},
 	# Carrera contra tu fantasma en el pasillo de prensas
-	{level = 6, marble = Vector3(0, -3.5, -47.4), ghost = Vector3(0.15, -3.5, -49.3), time = 0.6},
+	{level = 6, marble = Vector3(0, -3.5, -47.2), ghost = Vector3(0, -3.5, -48.9), time = 0.6},
 	# Pasillo de prensas: la del medio está cayendo
 	{level = 6, marble = Vector3(0, -3.5, -52.25), time = 2.43},
 	# Selección de niveles con estrellas, clasificación mundial y logros
-	{menu = true, ui = true},
+	{menu = true, ui = true, zoom = 1.4},
 	# Tobogán en espiral bajando hacia la meta
 	{level = 6, marble = Vector3(25.24, -10.18, -134.8)},
 	# Cresta con viento de costado y el laberinto detrás (en plena racha)
@@ -119,7 +121,8 @@ func _next() -> void:
 
 	_viewport = SubViewport.new()
 	_viewport.size = device.size
-	_viewport.size_2d_override = device.ui
+	var zoom: float = shot.get("zoom", 1.0)
+	_viewport.size_2d_override = Vector2i((Vector2(device.ui) * zoom).round())
 	_viewport.size_2d_override_stretch = true
 	_viewport.own_world_3d = true
 	_viewport.msaa_3d = Viewport.MSAA_4X
@@ -138,7 +141,7 @@ func _next() -> void:
 		_scene = load("res://scenes/game.tscn").instantiate()
 	_viewport.add_child(_scene)
 	if device.get("caption", true):
-		_add_caption(CAPTIONS[job.locale][job.index], device.ui.x)
+		_add_caption(CAPTIONS[job.locale][job.index], device.ui.x, zoom)
 	_frame = 0
 	_placed = false
 
@@ -220,11 +223,15 @@ func _place(shot: Dictionary) -> void:
 		var ghost: Node3D = load("res://scripts/ghost.gd").from_samples(PackedFloat32Array(sample + sample), mesh)
 		_scene.add_child(ghost)
 		ghost.seek(0.0)
+		# Algo más visible que en el juego: en una foto fija, tan transparente apenas se ve.
+		var material: StandardMaterial3D = ghost.material_override
+		material.albedo_color.a = 0.55
+		material.emission_energy_multiplier = 0.6
 	if shot.get("result", false):
 		var subtitle := tr("TIME_FMT") % 21.37 + "
 " + tr("NEW_RECORD")
 		var buttons := [[tr("NEXT_LEVEL"), func() -> void: pass], [tr("RETRY"), func() -> void: pass],
-				[tr("WORLD_RANKING"), func() -> void: pass], [tr("MENU"), func() -> void: pass]]
+				[tr("WORLD_RANKING"), func() -> void: pass]]
 		_scene._show_overlay(tr("LEVEL_CLEARED"), subtitle, buttons, load("res://scripts/ui.gd").stars(3, 64.0))
 	if shot.get("rivals", false):
 		var mesh: Mesh = (marble.get_node("Mesh") as MeshInstance3D).mesh
@@ -236,7 +243,7 @@ func _place(shot: Dictionary) -> void:
 
 
 ## Franja inferior con el texto de la captura.
-func _add_caption(text: String, ui_width: int) -> void:
+func _add_caption(text: String, ui_width: int, zoom := 1.0) -> void:
 	var layer := CanvasLayer.new()
 	layer.layer = 50
 	var band := ColorRect.new()
@@ -245,7 +252,7 @@ func _add_caption(text: String, ui_width: int) -> void:
 	band.anchor_right = 1.0
 	band.anchor_top = 1.0
 	band.anchor_bottom = 1.0
-	band.offset_top = -118.0
+	band.offset_top = -118.0 * zoom
 	layer.add_child(band)
 	var label := Label.new()
 	label.text = text
@@ -254,10 +261,10 @@ func _add_caption(text: String, ui_width: int) -> void:
 	label.anchor_right = 1.0
 	label.anchor_bottom = 1.0
 	# En iPad la interfaz es más estrecha (960 frente a 1564): letra más pequeña para que quepa.
-	label.add_theme_font_size_override("font_size", 50 if ui_width > 1200 else 38)
+	label.add_theme_font_size_override("font_size", roundi((50 if ui_width > 1200 else 38) * zoom))
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_color_override("font_color", Color(0.45, 1.0, 0.9))
 	label.add_theme_color_override("font_outline_color", Color(0.02, 0.0, 0.06))
-	label.add_theme_constant_override("outline_size", 10)
+	label.add_theme_constant_override("outline_size", roundi(10 * zoom))
 	band.add_child(label)
 	_viewport.add_child(layer)
