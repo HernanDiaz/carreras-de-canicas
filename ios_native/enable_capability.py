@@ -45,7 +45,7 @@ found = [b for b in found if b["attributes"]["identifier"] == bundle]
 if not found:
     raise SystemExit("No existe el App ID " + bundle)
 bundle_id = found[0]["id"]
-current = call("GET", "/bundleIds/%s/bundleIdCapabilities?limit=200" % bundle_id)["data"]
+current = call("GET", "/bundleIds/%s/bundleIdCapabilities" % bundle_id)["data"]
 types = [c["attributes"]["capabilityType"] for c in current]
 print("Capacidades de %s: %s" % (bundle, ", ".join(sorted(types))))
 if capability in types:
