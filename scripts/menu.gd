@@ -85,7 +85,10 @@ func _process(delta: float) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+	if what in [NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_WM_CLOSE_REQUEST] and _current == "options":
+		# Si se cierra o se manda al fondo la app con las opciones abiertas, no perderlas.
+		GameState.save_data()
+	elif what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if _current == "main":
 			get_tree().quit()
 		elif _current == "lobby":
@@ -97,6 +100,9 @@ func _notification(what: int) -> void:
 
 
 func _show(screen_name: String) -> void:
+	# Las opciones se guardan al salir de la pantalla, sea con "Volver" o con el botón atrás.
+	if _current == "options" and screen_name != "options":
+		GameState.save_data()
 	if _current == "multi" and screen_name != "multi":
 		Net.stop_discovery()
 	if screen_name == "multi":
@@ -302,10 +308,7 @@ func _build_options() -> Control:
 	_reset_button = UI.button(tr("RESET_PROGRESS"), _on_reset_pressed, 272.0)
 	_reset_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(_reset_button)
-	var back := UI.button(tr("BACK"), func() -> void:
-		GameState.save_data()
-		_show("main")
-	, 272.0)
+	var back := UI.button(tr("BACK"), func() -> void: _show("main"), 272.0)
 	back.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(back)
 	box.add_child(row)
