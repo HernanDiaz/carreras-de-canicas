@@ -49,6 +49,7 @@ var _sensor := Vector3.ZERO
 var _sensor_source := ""
 var _pending_respawn: Variant = null
 var _tween: Tween
+var _blink_tween: Tween
 var _last_velocity := Vector3.ZERO
 ## Fotogramas en los que no se detectan golpes (tras reaparecer, la velocidad cambia de golpe).
 var _impact_mute := 0
@@ -76,6 +77,19 @@ func respawn(pos: Vector3) -> void:
 	_pending_respawn = pos
 	sleeping = false
 	_impact_mute = 3
+	_blink()
+
+
+## Parpadeo corto al reaparecer, para encontrar la canica de un vistazo.
+func _blink() -> void:
+	var mesh: Node3D = get_node_or_null("Mesh")
+	if mesh == null:
+		return
+	if _blink_tween != null and _blink_tween.is_valid():
+		_blink_tween.kill()
+	_blink_tween = create_tween().set_loops(4)
+	_blink_tween.tween_callback(mesh.hide).set_delay(0.08)
+	_blink_tween.tween_callback(mesh.show).set_delay(0.08)
 
 
 ## Devuelve la canica a la física y activa los controles (inicio de partida).

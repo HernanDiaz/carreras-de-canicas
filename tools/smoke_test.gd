@@ -90,5 +90,13 @@ func _check_level(index: int) -> void:
 		_failures.append("%s: la canica se ha movido sola hasta %s" % [name, marble.global_position])
 	elif game._respawns > 0:
 		_failures.append("%s: la canica ha reaparecido sin tocar nada" % name)
+	elif index == 0:
+		# Reaparición: vuelve al punto de control, se apoya y termina visible tras el parpadeo.
+		game._respawn("FELL")
+		for _i in 90:
+			await get_tree().physics_frame
+		var mesh: Node3D = marble.get_node("Mesh")
+		if not marble.is_grounded() or not mesh.visible or not marble.visible:
+			_failures.append("%s: tras reaparecer, suelo=%s visible=%s" % [name, marble.is_grounded(), mesh.visible])
 	game.queue_free()
 	await get_tree().process_frame
