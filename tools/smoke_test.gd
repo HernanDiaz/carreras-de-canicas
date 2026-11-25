@@ -512,6 +512,9 @@ func _check_level(index: int) -> void:
 		game.notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
 		if not get_tree().paused or game._overlay == null:
 			_failures.append("nivel 1: no se pausa al ir al fondo en la cuenta atrás")
+		var pause_texts := _texts(game._overlay)
+		if not pause_texts.any(func(t: String) -> bool: return tr(GameState.LEVELS[0].name) in t):
+			_failures.append("nivel 1: la pausa no dice en qué nivel estás: %s" % [pause_texts])
 		var music_bus := AudioServer.get_bus_index(Audio.MUSIC_BUS)
 		for _i in 30:
 			await get_tree().process_frame

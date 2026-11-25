@@ -216,7 +216,7 @@ Para jugar desde el PC contra un móvil, Windows puede pedir permiso en el corta
 - La respuesta a la inclinación es curva: los primeros grados empujan poco, para tener control fino, y la fuerza crece rápido hasta el máximo. Se ajusta con `response_exponent` en `scripts/marble.gd`.
 - Si el móvil no tiene sensor de gravedad, se usa el acelerómetro con un filtro más fuerte contra el temblor de la mano. "Mostrar datos del sensor" indica qué sensor se está usando.
 - Para ganar hay que quedarse **3 segundos** sobre el damero de la meta. Un bote corto (menos de 0,25 s fuera) no reinicia la cuenta.
-- **Pausa** (botón **II**, Esc, Start del mando o atrás de Android; lo mismo la cierra): muestra tu récord y el tiempo de la siguiente estrella, y baja la música. Si la app pasa a segundo plano (también durante la cuenta atrás) o se desconecta el mando, se pausa sola.
+- **Pausa** (botón **II**, Esc, Start del mando o atrás de Android; lo mismo la cierra): muestra el nivel, tu récord y el tiempo de la siguiente estrella, y baja la música. Si la app pasa a segundo plano (también durante la cuenta atrás) o se desconecta el mando, se pausa sola.
 - Durante la partida, bajo el contador aparece tu **récord** del nivel (se apaga cuando el tiempo lo pasa); en los últimos 10 segundos el contador late y se pone rojo.
 - Al reaparecer tras una caída la canica parpadea un momento.
 - **Fin de nivel:** la música baja un poco (como en la pausa); tiempo, caídas, diferencia con tu récord anterior (`-0.84` si lo bates, `+1.20` si no) y el tiempo de la siguiente estrella contado desde tu mejor marca. Con 4 botones se colocan en dos columnas para que quepan en el móvil. Si se acaba el tiempo y el siguiente nivel ya estaba desbloqueado, también se ofrece **Siguiente nivel**.

@@ -465,7 +465,14 @@ func _pause() -> void:
 		return
 	get_tree().paused = true
 	Audio.duck_music(true)
-	_show_overlay(tr("PAUSE"), _goal_text(), [[tr("RESUME"), _resume], [tr("RESTART_LEVEL"), _restart], [tr("MAIN_MENU"), GameState.go_to_menu]])
+	# Nombre del nivel arriba: si vuelves a la app al rato, sabes dónde estabas.
+	var index := GameState.current_level
+	var subtitle := "%d. %s" % [index + 1, tr(GameState.LEVELS[index].name)]
+	var goal := _goal_text()
+	if goal != "":
+		subtitle += "
+" + goal
+	_show_overlay(tr("PAUSE"), subtitle, [[tr("RESUME"), _resume], [tr("RESTART_LEVEL"), _restart], [tr("MAIN_MENU"), GameState.go_to_menu]])
 	_resume_on_cancel()
 
 
