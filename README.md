@@ -105,6 +105,12 @@ Godot 4.7.2 está instalado en `%LOCALAPPDATA%\Programs\Godot`.
 
 Si añades scripts nuevos con `class_name`, abre el proyecto una vez con **Abrir editor.bat** antes de usar **Jugar.bat**, para que Godot los registre.
 
+**Prueba automática de los niveles** (`tools/smoke_test.tscn`): carga cada nivel, espera a la salida y comprueba que la canica se apoya en el suelo y no se cae ni reaparece sola. Escribe `SMOKE OK` o qué nivel falla:
+
+```
+Godot_v4.7.2-stable_win64.exe --headless --path . --fixed-fps 60 res://tools/smoke_test.tscn
+```
+
 ## Probar en el móvil Android
 
 Ya está todo configurado en este PC:
