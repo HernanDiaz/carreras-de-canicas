@@ -294,6 +294,15 @@ func _check_level(index: int) -> void:
 			if game.time_label.text != case[1] or red != case[2]:
 				_failures.append("contador: con %s muestra %s (rojo %s)" % [case[0], game.time_label.text, red])
 		game.time_left = time_before
+		# Meta: un bote corto (menos de GOAL_GRACE) no reinicia la cuenta; salir de verdad, sí.
+		game.level.marble_on_goal = true
+		game._update_goal(1.0)
+		game.level.marble_on_goal = false
+		game._update_goal(0.1)
+		var kept: float = game._goal_hold
+		game._update_goal(0.2)
+		if not is_equal_approx(kept, 1.0) or game._goal_hold != 0.0:
+			_failures.append("meta: tras un bote queda %s (debe 1.0) y al salir %s (debe 0)" % [kept, game._goal_hold])
 		# R reinicia al momento, pero no si se mantiene pulsada (eco), con otra tecla ni en carrera.
 		var key := InputEventKey.new()
 		key.physical_keycode = KEY_R

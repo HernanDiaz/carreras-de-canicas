@@ -6,6 +6,8 @@ extends Node3D
 const FALL_MARGIN := 8.0
 ## Segundos que hay que aguantar sobre la meta para ganar.
 const GOAL_HOLD_TIME := 3.0
+## Tiempo que puedes estar fuera de la meta (un bote) sin perder la cuenta.
+const GOAL_GRACE := 0.25
 const COUNTDOWN_TIME := 3.0
 ## En carrera, cada jugador sale desde una esquina distinta de la salida.
 const START_OFFSETS := [Vector3(-1.2, 0, 1.2), Vector3(1.2, 0, 1.2), Vector3(-1.2, 0, -1.2), Vector3(1.2, 0, -1.2)]
@@ -27,6 +29,7 @@ var race := false
 var _countdown := COUNTDOWN_TIME
 var _message_time := 0.0
 var _goal_hold := 0.0
+var _off_goal := 0.0
 var _overlay: Control
 var _remotes := {}
 var _send_timer := 0.0
@@ -254,6 +257,7 @@ func _notification(what: int) -> void:
 ## Hay que quedarse GOAL_HOLD_TIME segundos seguidos sobre la meta; si sales, vuelve a empezar.
 func _update_goal(delta: float) -> void:
 	if level.marble_on_goal:
+		_off_goal = 0.0
 		_goal_hold += delta
 		if _goal_hold >= GOAL_HOLD_TIME:
 			level.set_goal_progress(1.0)
@@ -266,6 +270,10 @@ func _update_goal(delta: float) -> void:
 			Audio.play("tick", 0.0, 1.4)
 		_show_message(tr("HOLD_FMT") % left, 0.2)
 	elif _goal_hold > 0.0:
+		# Un botecito al rodar sobre el damero no te hace empezar de cero: hay un margen.
+		_off_goal += delta
+		if _off_goal < GOAL_GRACE:
+			return
 		_goal_hold = 0.0
 		_last_goal_tick = -1
 		_show_message(tr("BACK_TO_GOAL"), 1.0)
