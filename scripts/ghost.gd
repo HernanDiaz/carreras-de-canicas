@@ -18,8 +18,12 @@ static func load_for(level_index: int, mesh: Mesh) -> Ghost:
 
 ## Fantasma a partir de unas muestras (también lo usan las capturas de la tienda).
 static func from_samples(samples: PackedFloat32Array, mesh: Mesh) -> Ghost:
-	if samples.size() < STRIDE * 2:
+	# Un archivo cortado a medias o con datos sin sentido no se reproduce.
+	if samples.size() < STRIDE * 2 or samples.size() % STRIDE != 0:
 		return null
+	for i in range(0, samples.size(), STRIDE):
+		if not _sample_ok(samples, i):
+			return null
 	var ghost := Ghost.new()
 	ghost._samples = samples
 	ghost.mesh = mesh
@@ -37,6 +41,14 @@ static func from_samples(samples: PackedFloat32Array, mesh: Mesh) -> Ghost:
 	ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	ghost.visible = false
 	return ghost
+
+
+static func _sample_ok(samples: PackedFloat32Array, a: int) -> bool:
+	for k in STRIDE:
+		if not is_finite(samples[a + k]):
+			return false
+	# La rotación tiene que poder normalizarse.
+	return Quaternion(samples[a + 3], samples[a + 4], samples[a + 5], samples[a + 6]).length_squared() > 0.0001
 
 
 ## Coloca el fantasma donde estaba `seconds` después de la salida.

@@ -22,6 +22,7 @@ func _ready() -> void:
 	_check_bad_save()
 	_check_suggested()
 	_check_bad_options()
+	_check_bad_ghost()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -211,6 +212,27 @@ func _check_ghost() -> void:
 	if loaded != recorder.samples:
 		_failures.append("fantasma: lo leído del disco no coincide con lo guardado")
 	body.free()
+
+
+## Fantasmas con datos rotos (cortados, NaN, rotación nula) se descartan en vez de dar errores.
+func _check_bad_ghost() -> void:
+	var good := PackedFloat32Array([0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1])
+	var mesh := SphereMesh.new()
+	var ghost := Ghost.from_samples(good, mesh)
+	if ghost == null:
+		_failures.append("fantasma: uno válido se descarta")
+	else:
+		ghost.free()
+	var cut := good.slice(0, 12)
+	var nan := good.duplicate()
+	nan[9] = NAN
+	var zero_rot := good.duplicate()
+	zero_rot[14] = 0.0
+	for bad: PackedFloat32Array in [cut, nan, zero_rot]:
+		var g := Ghost.from_samples(bad, mesh)
+		if g != null:
+			_failures.append("fantasma: se acepta uno roto (%d datos)" % bad.size())
+			g.free()
 
 
 ## Opciones con tipos equivocados en el archivo: se ignoran (sin error) y lo válido se carga.
