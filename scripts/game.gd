@@ -348,7 +348,16 @@ func _pause() -> void:
 		_show_overlay(tr("RACE_IN_PROGRESS"), tr("RACE_CONTINUES"), [[keep, _resume], [tr("LEAVE_RACE"), _leave_race]])
 		return
 	get_tree().paused = true
-	_show_overlay(tr("PAUSE"), "", [[tr("RESUME"), _resume], [tr("RESTART_LEVEL"), _restart], [tr("MAIN_MENU"), GameState.go_to_menu]])
+	# Recordatorio de lo que hay que batir: récord y tiempo de la siguiente estrella.
+	var index := GameState.current_level
+	var goal := ""
+	if GameState.best_times.has(index):
+		goal = tr("RECORD_FMT") % GameState.best_times[index]
+	var stars := GameState.stars_of(index)
+	if stars == 1 or stars == 2:
+		var limits: Array = GameState.LEVELS[index].stars
+		goal += "\n" + tr("NEXT_STAR_FMT") % limits[2 - stars]
+	_show_overlay(tr("PAUSE"), goal, [[tr("RESUME"), _resume], [tr("RESTART_LEVEL"), _restart], [tr("MAIN_MENU"), GameState.go_to_menu]])
 
 
 func _resume() -> void:
