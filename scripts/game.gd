@@ -225,7 +225,7 @@ func _physics_process(delta: float) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	# Esc en el PC (mientras está en pausa este nodo no recibe eventos; se sale con los botones)
-	if event.is_action_pressed("ui_cancel") and (state != State.ENDED or race):
+	if (event.is_action_pressed("ui_cancel") or _is_joy(event, JOY_BUTTON_START)) and (state != State.ENDED or race):
 		_pause()
 	elif _is_quick_restart(event):
 		_restart()
@@ -236,11 +236,20 @@ func _unhandled_input(event: InputEvent) -> void:
 			_cycle_watch(1)
 
 
-## R reinicia el nivel al momento (en el PC, para repetir intentos sin pasar por la pausa).
-## En carrera no: hay más jugadores esperando.
+## R (o Select/Back del mando) reinicia el nivel al momento, para repetir intentos sin pasar
+## por la pausa. En carrera no: hay más jugadores esperando.
 func _is_quick_restart(event: InputEvent) -> bool:
+	if race:
+		return false
 	var key := event as InputEventKey
-	return not race and key != null and key.pressed and not key.echo and key.physical_keycode == KEY_R
+	if key != null:
+		return key.pressed and not key.echo and key.physical_keycode == KEY_R
+	return _is_joy(event, JOY_BUTTON_BACK)
+
+
+func _is_joy(event: InputEvent, button: JoyButton) -> bool:
+	var joy := event as InputEventJoypadButton
+	return joy != null and joy.pressed and joy.button_index == button
 
 
 func _notification(what: int) -> void:

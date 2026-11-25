@@ -103,6 +103,7 @@ Godot 4.7.2 está instalado en `%LOCALAPPDATA%\Programs\Godot`.
   - **Flechas del teclado o WASD**: control directo, sin simular el sensor.
   - **Esc** o el botón **II** pausan la partida.
   - **R** reinicia el nivel al momento (solo en partida individual).
+  - **Mando**: stick izquierdo o cruceta para mover, **Start** pausa y **Select/Back** reinicia.
 - **Abrir editor.bat**: abre el proyecto en el editor de Godot. Dentro, **F5** ejecuta el juego.
 
 Si añades scripts nuevos con `class_name`, abre el proyecto una vez con **Abrir editor.bat** antes de usar **Jugar.bat**, para que Godot los registre.

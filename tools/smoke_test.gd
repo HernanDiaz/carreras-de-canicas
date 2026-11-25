@@ -404,6 +404,14 @@ func _check_level(index: int) -> void:
 		game.race = true
 		var race_ok: bool = game._is_quick_restart(key)
 		game.race = false
+		var pad := InputEventJoypadButton.new()
+		pad.button_index = JOY_BUTTON_BACK
+		pad.pressed = true
+		if not game._is_quick_restart(pad):
+			_failures.append("nivel 1: Select/Back del mando no reinicia")
+		pad.button_index = JOY_BUTTON_START
+		if game._is_quick_restart(pad) or not game._is_joy(pad, JOY_BUTTON_START):
+			_failures.append("nivel 1: Start del mando debe pausar, no reiniciar")
 		if echo_ok or other_ok or race_ok:
 			_failures.append("nivel 1: R reinicia cuando no debe (eco %s, otra tecla %s, carrera %s)" % [echo_ok, other_ok, race_ok])
 		# Mandar la app al fondo en la cuenta atrás pausa la partida; al volver sigue.
