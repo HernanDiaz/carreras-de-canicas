@@ -67,6 +67,10 @@ var open_screen := ""
 
 
 func _ready() -> void:
+	# La física va a 60 Hz y sin interpolar: en móviles de 90/120 Hz pintar más de 60 imágenes
+	# por segundo no se ve más suave (la canica se mueve 60 veces), solo gasta batería y calienta.
+	if OS.has_feature("mobile"):
+		Engine.max_fps = Engine.physics_ticks_per_second
 	load_data()
 	apply_language()
 	if not tilt_custom:
