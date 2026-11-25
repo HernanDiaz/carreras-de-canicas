@@ -312,7 +312,7 @@ func _finish(won: bool) -> void:
 		if time_left < 3.0:
 			GameServices.unlock("close_call")
 		_show_message(tr("GOAL"), 1.3)
-		var subtitle := tr("TIME_FMT") % elapsed
+		var subtitle := tr("TIME_FMT") % elapsed + "   ·   " + tr("FALLS_FMT") % _respawns
 		# Diferencia con el récord anterior: "-0.84" si lo has batido, "+1.20" si no.
 		var diff := "  (%+.2f)" % (elapsed - previous) if had_record else ""
 		if record:
