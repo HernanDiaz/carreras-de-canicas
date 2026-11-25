@@ -53,6 +53,8 @@ var _last_velocity := Vector3.ZERO
 ## Fotogramas en los que no se detectan golpes (tras reaparecer, la velocidad cambia de golpe).
 var _impact_mute := 0
 var _impact_cooldown := 0.0
+## Consulta de suelo reutilizada (se hace en cada paso de física).
+var _ground_query := PhysicsRayQueryParameters3D.new()
 
 
 ## Guarda la posición actual del móvil como "plano".
@@ -253,9 +255,11 @@ func _control_factor() -> float:
 
 
 func _check_grounded() -> bool:
-	var query := PhysicsRayQueryParameters3D.create(global_position, global_position + Vector3.DOWN * 0.7)
-	query.exclude = [get_rid()]
-	var hit := get_world_3d().direct_space_state.intersect_ray(query)
+	if _ground_query.exclude.is_empty():
+		_ground_query.exclude = [get_rid()]
+	_ground_query.from = global_position
+	_ground_query.to = global_position + Vector3.DOWN * 0.7
+	var hit := get_world_3d().direct_space_state.intersect_ray(_ground_query)
 	var ground: Object = hit.get("collider")
 	_on_ice = ground != null and ground.get_meta("surface", "") == "ice"
 	_ground_velocity = ground.get_meta("velocity", Vector3.ZERO) if ground != null else Vector3.ZERO
