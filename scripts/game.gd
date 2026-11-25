@@ -55,6 +55,9 @@ var _fall_sounded := false
 ## Veces que has reaparecido en esta partida (logro "sin caerte").
 var _respawns := 0
 var _shown_tenths := -1
+var _record_label: Label
+var _record_best := 0.0
+var _record_faded := false
 
 @onready var marble: Marble = $Marble
 @onready var camera: MarbleCamera = $Camera
@@ -159,6 +162,7 @@ func _process(delta: float) -> void:
 		State.PLAYING:
 			time_left = maxf(time_left - delta, 0.0)
 			elapsed += delta
+			_update_record_label()
 			if not race:
 				_recorder.record(elapsed, marble)
 				if _ghost != null:
@@ -322,9 +326,18 @@ func _add_record_label(best: float) -> void:
 	label.offset_bottom = 130.0
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	time_label.get_parent().add_child(label)
+	_record_label = label
+	_record_best = best
 
 
-## "Latido" del contador en los últimos segundos (se ve aunque juegues sin sonido).
+## Cuando el tiempo pasa de tu récord, la etiqueta se apaga: ya no lo vas a batir esta vez.
+func _update_record_label() -> void:
+	if _record_label == null or _record_faded or elapsed <= _record_best:
+		return
+	_record_faded = true
+	create_tween().tween_property(_record_label, "modulate", Color(1, 0.6, 0.6, 0.4), 0.5)
+
+
 ## El contador redondea hacia arriba (no marca 0.0 hasta que se acaba de verdad, ni 10.0 en
 ## rojo) y solo se reescribe cuando cambia la décima que se ve.
 func _update_time_label() -> void:
@@ -336,6 +349,7 @@ func _update_time_label() -> void:
 	time_label.modulate = Color.RED if tenths < 100 else Color.WHITE
 
 
+## "Latido" del contador en los últimos segundos (se ve aunque juegues sin sonido).
 func _pulse_time() -> void:
 	time_label.pivot_offset = time_label.size / 2.0
 	time_label.scale = Vector2.ONE * 1.25

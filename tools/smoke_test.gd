@@ -130,6 +130,17 @@ func _check_endings() -> void:
 		var has_label: bool = game.has_node("HUD/Root/RecordLabel")
 		if has_label != (attempt != "primera"):
 			_failures.append("final (%s): etiqueta de récord en el HUD = %s" % [attempt, has_label])
+		if has_label:
+			# Por debajo del récord la etiqueta sigue viva; al pasarlo, se apaga.
+			game.elapsed = 10.0
+			game._update_record_label()
+			var alive: bool = game._record_label.modulate.a > 0.5
+			game.elapsed = 31.0
+			game._update_record_label()
+			for _i in 40:
+				await get_tree().process_frame
+			if not alive or game._record_label.modulate.a > 0.5:
+				_failures.append("final (%s): la etiqueta de récord no se apaga al pasarlo" % attempt)
 		game.elapsed = 30.0 if attempt == "primera" else 55.0
 		if attempt == "tiempo":
 			# Fantasma de 100 s que avanza 1 m por muestra: debe seguir moviéndose tras el final.
