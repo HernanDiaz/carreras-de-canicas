@@ -80,12 +80,27 @@ func apply_settings() -> void:
 func play(sound_name: String, volume_db := 0.0, pitch := 1.0) -> void:
 	if not GameState.sound_on:
 		return
-	var player := _voices[_next_voice]
-	_next_voice = (_next_voice + 1) % VOICES
+	if not SOUNDS.has(sound_name):
+		push_warning("Sonido desconocido: " + sound_name)
+		return
+	var player := _free_voice()
 	player.stream = SOUNDS[sound_name]
 	player.volume_db = volume_db
 	player.pitch_scale = pitch
 	player.play()
+
+
+## Una voz que no esté sonando; si todas suenan, la siguiente por turno (la más antigua). Así
+## una ráfaga de golpes no corta la fanfarria de la meta si hay voces libres.
+func _free_voice() -> AudioStreamPlayer:
+	for i in VOICES:
+		var index := (_next_voice + i) % VOICES
+		if not _voices[index].playing:
+			_next_voice = (index + 1) % VOICES
+			return _voices[index]
+	var player := _voices[_next_voice]
+	_next_voice = (_next_voice + 1) % VOICES
+	return player
 
 
 ## Cambia la música de fondo ("menu", "game" o "" para silencio) con un fundido corto.

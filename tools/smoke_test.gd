@@ -23,6 +23,7 @@ func _ready() -> void:
 	_check_suggested()
 	_check_bad_options()
 	_check_bad_ghost()
+	_check_voices()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -230,6 +231,35 @@ func _check_ghost() -> void:
 	if loaded != recorder.samples:
 		_failures.append("fantasma: lo leído del disco no coincide con lo guardado")
 	body.free()
+
+
+## Sonidos: se usan voces libres antes de cortar uno que suena (la fanfarria no se corta).
+func _check_voices() -> void:
+	var sound_was: bool = GameState.sound_on
+	GameState.sound_on = true
+	for v in Audio._voices:
+		v.stop()
+	Audio.play("win")
+	var win_voice: AudioStreamPlayer = null
+	for v in Audio._voices:
+		if v.playing:
+			win_voice = v
+	if win_voice == null:
+		print("SMOKE aviso: sin audio en este modo, no se comprueban las voces")
+	else:
+		# Llena las demás voces, libera una y suena otro golpe: por turno tocaría la fanfarria.
+		for _i in Audio.VOICES - 1:
+			Audio.play("tick", -80.0)
+		for v in Audio._voices:
+			if v != win_voice:
+				v.stop()
+				break
+		Audio.play("tick", -80.0)
+		if win_voice.stream != Audio.SOUNDS["win"] or not win_voice.playing:
+			_failures.append("sonido: la fanfarria se corta aunque hay voces libres")
+	for v in Audio._voices:
+		v.stop()
+	GameState.sound_on = sound_was
 
 
 ## Fantasmas con datos rotos (cortados, NaN, rotación nula) se descartan en vez de dar errores.
