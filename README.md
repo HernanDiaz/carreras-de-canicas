@@ -12,6 +12,7 @@ El juego está traducido a 15 idiomas: inglés, español, portugués (Brasil), f
 - **Textos:** todos están en `locale/translations.csv`, una fila por texto y una columna por idioma. Se puede abrir con Excel o LibreOffice (UTF-8). En el código se usan por su clave con `tr("CLAVE")`.
 - **Añadir un idioma:** añade una columna con su código (por ejemplo `pl`) y su ruta `res://locale/translations.pl.translation` en `internationalization/locale/translations` de `project.godot`, y añade el código a `LANGUAGES` en `scripts/game_state.gd`.
 - Conviene que una persona nativa revise las traducciones antes de publicar.
+- **Comprobar** que no falta ninguna: `python tools/check_translations.py` avisa si una clave usada en el código no está en el CSV, si una celda está vacía o si los `%d`/`%.1f` de un idioma no coinciden con el inglés.
 - Japonés, chino, coreano, hindi y árabe usan las fuentes del sistema: la fuente del juego solo tiene alfabeto latino. El árabe se muestra de derecha a izquierda, con la interfaz en espejo.
 
 ## Estructura
