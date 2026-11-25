@@ -121,6 +121,15 @@ func is_unlocked(index: int) -> bool:
 	return index < unlocked
 
 
+## Nivel que toca jugar: el primero desbloqueado sin superar o, si están todos superados,
+## el último que se jugó.
+func suggested_level() -> int:
+	for i in LEVELS.size():
+		if is_unlocked(i) and not best_times.has(i):
+			return i
+	return current_level
+
+
 ## Registra un nivel superado. Devuelve true si es un nuevo récord.
 ## `ghost` es la vuelta grabada: se guarda como fantasma si es récord.
 func complete_level(index: int, seconds: float, ghost := PackedFloat32Array()) -> bool:

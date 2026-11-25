@@ -65,6 +65,8 @@ func _check_menu_fits() -> void:
 		add_child(menu)
 		menu._ranking_button.visible = true
 		menu._achievements_button.visible = true
+		menu._continue_button.visible = true
+		menu._continue_button.text = tr("CONTINUE_FMT") % 9
 		menu._fill_level_grid()
 		await get_tree().process_frame
 		for screen_name: String in menu._screens:

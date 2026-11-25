@@ -7,6 +7,7 @@ var _t := 0.0
 var _marble_visual: MeshInstance3D
 var _level_grid: GridContainer
 var _suggested_card: Button
+var _continue_button: Button
 var _stars_total: Label
 var _ranking_button: Button
 var _achievements_button: Button
@@ -114,6 +115,9 @@ func _show(screen_name: String) -> void:
 		_refresh_lobby()
 	if screen_name == "levels":
 		_fill_level_grid()
+	if screen_name == "main":
+		_continue_button.visible = not GameState.best_times.is_empty()
+		_continue_button.text = tr("CONTINUE_FMT") % (GameState.suggested_level() + 1)
 	if screen_name == "options":
 		_reset_armed = false
 		_reset_button.text = tr("RESET_PROGRESS")
@@ -134,12 +138,24 @@ func _build_main() -> Control:
 	var title := tr("GAME_TITLE").to_upper()
 	box.add_child(UI.label(title, 92 if title.length() <= 18 else 76, UI.C_ACCENT))
 	box.add_child(UI.spacer(24))
+	# Un toque para seguir donde lo dejaste (solo si ya has superado algún nivel).
+	_continue_button = UI.button("", func() -> void: GameState.play(GameState.suggested_level()))
+	box.add_child(_continue_button)
 	box.add_child(UI.button(tr("MENU_PLAY"), func() -> void: _show("levels")))
 	box.add_child(UI.button(tr("MENU_WIFI"), func() -> void: _show("multi")))
-	box.add_child(UI.button(tr("MENU_OPTIONS"), func() -> void: _show("options")))
+	# Opciones y Salir en una fila, para que el menú (con Continuar) quepa en 720 px de alto.
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 16)
+	box.add_child(row)
+	var options := UI.button(tr("MENU_OPTIONS"), func() -> void: _show("options"), 182.0)
+	options.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(options)
 	# En iOS las apps no pueden cerrarse solas (norma de la App Store): sin botón Salir.
 	if OS.get_name() != "iOS":
-		box.add_child(UI.button(tr("MENU_QUIT"), func() -> void: get_tree().quit()))
+		var quit := UI.button(tr("MENU_QUIT"), func() -> void: get_tree().quit(), 182.0)
+		quit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(quit)
 	box.add_child(UI.spacer(8))
 	var lang := UI.button(_language_text(), _on_language_pressed, 380.0)
 	lang.theme_type_variation = UI.SECONDARY
@@ -210,13 +226,8 @@ func _build_ranking() -> Control:
 func _fill_level_grid() -> void:
 	for child in _level_grid.get_children():
 		child.queue_free()
-	# Nivel sugerido (el foco empieza en él): el primero desbloqueado sin superar o, si están
-	# todos superados, el último que se jugó.
-	var suggested := GameState.current_level
-	for i in GameState.LEVELS.size():
-		if GameState.is_unlocked(i) and not GameState.best_times.has(i):
-			suggested = i
-			break
+	# El foco empieza en el nivel que toca jugar.
+	var suggested := GameState.suggested_level()
 	_suggested_card = null
 	for i in GameState.LEVELS.size():
 		var info: Dictionary = GameState.LEVELS[i]
@@ -551,7 +562,7 @@ func _check(text: String, value: bool, on_toggled: Callable, min_width := 560.0)
 
 func _first_button(node: Node) -> BaseButton:
 	for child in node.get_children():
-		if child is BaseButton and not child.disabled:
+		if child is BaseButton and not child.disabled and child.visible:
 			return child
 		var found := _first_button(child)
 		if found != null:
