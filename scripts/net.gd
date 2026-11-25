@@ -161,7 +161,8 @@ func _register(player_name: String) -> void:
 	if in_race or players.size() >= MAX_PLAYERS:
 		multiplayer.multiplayer_peer.disconnect_peer(id)
 		return
-	players[id] = {name = player_name.strip_edges().left(16), slot = _free_slot()}
+	var clean := player_name.strip_edges().left(16)
+	players[id] = {name = clean if clean != "" else "?", slot = _free_slot()}
 	_sync_to_all()
 
 
@@ -339,6 +340,9 @@ func _finish(seconds: float) -> void:
 	if not multiplayer.is_server():
 		return
 	var id := _sender()
+	# Un tiempo sin sentido (NaN, infinito) desordenaría la clasificación: cuenta como no terminado.
+	if not is_finite(seconds):
+		seconds = -1.0
 	if _finished.has(id):
 		return
 	_finished[id] = seconds

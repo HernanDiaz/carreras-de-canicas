@@ -26,6 +26,10 @@ func _ready() -> void:
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
+		# Estrellas con sentido: 3 estrellas exige menos tiempo que 2, y ambas caben en el límite.
+		var info: Dictionary = GameState.LEVELS[i]
+		if not (0.0 < info.stars[0] and info.stars[0] < info.stars[1] and info.stars[1] < info.time):
+			_failures.append("nivel %d: estrellas %s no encajan con el límite %s" % [i + 1, info.stars, info.time])
 		await _check_level(i)
 	await _check_endings()
 	if _failures.is_empty():
