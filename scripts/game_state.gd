@@ -3,6 +3,8 @@ extends Node
 
 const SAVE_PATH := "user://progreso.cfg"
 const GHOST_DIR := "user://fantasmas"
+## Tope de datos de un fantasma (de sobra: 10 minutos son ~96 000).
+const MAX_GHOST_FLOATS := 1_000_000
 const GAME_SCENE := "res://scenes/game.tscn"
 const MENU_SCENE := "res://scenes/menu.tscn"
 
@@ -246,7 +248,25 @@ func load_ghost(index: int) -> PackedFloat32Array:
 		return PackedFloat32Array()
 	var packed := file.get_buffer(file.get_length() - 4)
 	var count := file.get_32()
+	# Un archivo dañado podría pedir una cantidad absurda de memoria: mejor sin fantasma.
+	if count == 0 or count > MAX_GHOST_FLOATS:
+		return PackedFloat32Array()
 	return packed.decompress(count * 4, FileAccess.COMPRESSION_ZSTD).to_float32_array()
+
+
+## Récords del archivo guardado. Se ignora lo que no tenga sentido (claves raras, niveles que
+## no existen en esta versión, tiempos no positivos) para que un archivo dañado no rompa el menú.
+func _read_records(cfg: ConfigFile) -> void:
+	best_times.clear()
+	if not cfg.has_section("records"):
+		return
+	for key in cfg.get_section_keys("records"):
+		var value: Variant = cfg.get_value("records", key)
+		if not key.is_valid_int() or not (value is float or value is int):
+			continue
+		var index := int(key)
+		if index >= 0 and index < LEVELS.size() and float(value) > 0.0:
+			best_times[index] = float(value)
 
 
 func _ghost_path(index: int) -> String:
@@ -282,10 +302,7 @@ func load_data() -> void:
 	if cfg.load(SAVE_PATH) != OK:
 		return
 	unlocked = clampi(cfg.get_value("progreso", "desbloqueados", 1), 1, LEVELS.size())
-	best_times.clear()
-	if cfg.has_section("records"):
-		for key in cfg.get_section_keys("records"):
-			best_times[int(key)] = float(cfg.get_value("records", key))
+	_read_records(cfg)
 	achievements.assign(cfg.get_value("progreso", "logros", []))
 	resets = cfg.get_value("progreso", "reinicios", 0)
 	review_stage = cfg.get_value("progreso", "valoracion", 0)

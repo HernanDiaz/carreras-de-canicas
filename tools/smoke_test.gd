@@ -19,6 +19,7 @@ func _ready() -> void:
 	_check_ghost()
 	_check_camera_lead()
 	_check_wasd()
+	_check_bad_save()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -187,6 +188,24 @@ func _check_ghost() -> void:
 	if loaded != recorder.samples:
 		_failures.append("fantasma: lo leído del disco no coincide con lo guardado")
 	body.free()
+
+
+## Un archivo guardado con basura no rompe nada: solo se cargan los récords válidos.
+func _check_bad_save() -> void:
+	var saved: Dictionary = GameState.best_times.duplicate()
+	var cfg := ConfigFile.new()
+	cfg.set_value("records", "0", 31.5)
+	cfg.set_value("records", "1", 40)
+	cfg.set_value("records", "99", 10.0)
+	cfg.set_value("records", "-1", 10.0)
+	cfg.set_value("records", "abc", 10.0)
+	cfg.set_value("records", "2", "rapido")
+	cfg.set_value("records", "3", 0.0)
+	GameState._read_records(cfg)
+	if GameState.best_times != {0: 31.5, 1: 40.0}:
+		_failures.append("guardado dañado: se cargan %s" % GameState.best_times)
+	GameState.total_stars()  # no debe salirse de la lista de niveles
+	GameState.best_times = saved
 
 
 ## WASD mueve como las flechas (por posición física) y en diagonal no va más rápido.
