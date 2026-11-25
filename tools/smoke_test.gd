@@ -16,6 +16,7 @@ func _ready() -> void:
 	GameState.persist = false
 	GameState.show_ghost = false
 	_check_cloud_merge()
+	await _check_overlay_fits()
 	for i in GameState.LEVELS.size():
 		await _check_level(i)
 	if _failures.is_empty():
@@ -24,6 +25,32 @@ func _ready() -> void:
 		for failure in _failures:
 			print("SMOKE FAIL ", failure)
 	get_tree().quit(0 if _failures.is_empty() else 1)
+
+
+## La pantalla de fin de nivel más cargada (4 botones, estrellas y 3 líneas) cabe en 1280x720,
+## en todos los idiomas.
+func _check_overlay_fits() -> void:
+	var holder := Control.new()
+	holder.theme = UI.make_theme()
+	holder.size = Vector2(1280, 720)
+	add_child(holder)
+	for locale in TranslationServer.get_loaded_locales():
+		TranslationServer.set_locale(locale)
+		var subtitle := "%s   ·   %s\n%s  (-0.84)\n%s" % [tr("TIME_FMT") % 123.4, tr("FALLS_FMT") % 12,
+			tr("NEW_RECORD"), tr("NEXT_STAR_FMT") % 45.0]
+		var buttons := []
+		for key in ["NEXT_LEVEL", "RETRY", "WORLD_RANKING", "MENU"]:
+			buttons.append([tr(key), func() -> void: pass])
+		var overlay := UI.overlay(tr("LEVEL_CLEARED"), subtitle, buttons, UI.stars(3, 64.0))
+		holder.add_child(overlay)
+		await get_tree().process_frame
+		var panel: Control = overlay.get_child(1).get_child(0)
+		var need := panel.get_combined_minimum_size()
+		if need.y > 720.0 or need.x > 1280.0:
+			_failures.append("pantalla de fin de nivel (%s) mide %s y no cabe en 1280x720" % [locale, need])
+		overlay.free()
+	GameState.apply_language()
+	holder.free()
 
 
 func _expect(condition: bool, what: String) -> void:

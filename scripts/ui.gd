@@ -149,9 +149,20 @@ static func overlay(title: String, subtitle: String, buttons: Array, extra: Cont
 		box.add_child(label(subtitle, 30, C_MUTED))
 	box.add_child(spacer(8))
 	var first: Button = null
+	# Con 4 botones o más, en dos columnas: en vertical no caben en los 720 px de alto de un
+	# móvil junto con el título, las estrellas y tres líneas de texto.
+	var holder: Container = box
+	if buttons.size() >= 4:
+		var grid := GridContainer.new()
+		grid.columns = 2
+		grid.add_theme_constant_override("h_separation", 16)
+		grid.add_theme_constant_override("v_separation", 16)
+		grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		box.add_child(grid)
+		holder = grid
 	for entry in buttons:
 		var b := button(entry[0], entry[1])
-		box.add_child(b)
+		holder.add_child(b)
 		if first == null:
 			first = b
 	if first != null:
