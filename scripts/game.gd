@@ -435,10 +435,12 @@ func _pause() -> void:
 		# En carrera el juego no se puede detener: solo se ofrece salir.
 		var keep := tr("KEEP_WATCHING") if _spectating else tr("KEEP_GOING")
 		_show_overlay(tr("RACE_IN_PROGRESS"), tr("RACE_CONTINUES"), [[keep, _resume], [tr("LEAVE_RACE"), _leave_race]])
+		_resume_on_cancel()
 		return
 	get_tree().paused = true
 	Audio.duck_music(true)
 	_show_overlay(tr("PAUSE"), _goal_text(), [[tr("RESUME"), _resume], [tr("RESTART_LEVEL"), _restart], [tr("MAIN_MENU"), GameState.go_to_menu]])
+	_resume_on_cancel()
 
 
 ## Lo que hay que batir en este nivel: récord y tiempo de la siguiente estrella ("" si aún no
@@ -786,6 +788,19 @@ func _show_overlay(title: String, subtitle: String, buttons: Array, extra: Contr
 	_overlay = UI.overlay(title, subtitle, buttons, extra)
 	_overlay.process_mode = Node.PROCESS_MODE_ALWAYS
 	hud.add_child(_overlay)
+
+
+## En el panel de pausa, Esc o Start vuelven a la partida, como el atrás de Android. Con la
+## partida en pausa este nodo no recibe teclas, pero el botón que tiene el foco sí.
+func _resume_on_cancel() -> void:
+	for b in _overlay.find_children("*", "BaseButton", true, false):
+		(b as BaseButton).gui_input.connect(_on_overlay_input)
+
+
+func _on_overlay_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel") or _is_joy(event, JOY_BUTTON_START):
+		get_viewport().set_input_as_handled()
+		_resume()
 
 
 func _close_overlay() -> void:

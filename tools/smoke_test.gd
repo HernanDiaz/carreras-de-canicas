@@ -425,7 +425,19 @@ func _check_level(index: int) -> void:
 			await get_tree().process_frame
 		if AudioServer.get_bus_volume_db(music_bus) > -5.0:
 			_failures.append("nivel 1: la música no baja en la pausa")
-		game._resume()
+		# Esc / Start con la pausa abierta (el foco está en un botón del panel) reanudan.
+		var cancel := InputEventAction.new()
+		cancel.action = "ui_cancel"
+		cancel.pressed = true
+		var focused: Control = get_viewport().gui_get_focus_owner()
+		if focused == null or not game._overlay.is_ancestor_of(focused):
+			_failures.append("nivel 1: la pausa no pone el foco en un botón")
+			game._resume()
+		else:
+			focused.gui_input.emit(cancel)
+			if get_tree().paused or game._overlay != null:
+				_failures.append("nivel 1: Esc con la pausa abierta no reanuda")
+				game._resume()
 		for _i in 30:
 			await get_tree().process_frame
 		if absf(AudioServer.get_bus_volume_db(music_bus)) > 0.5:
