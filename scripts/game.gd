@@ -338,6 +338,11 @@ func _finish(won: bool) -> void:
 			# Un "ding" por estrella, cada uno más agudo.
 			for i in stars:
 				get_tree().create_timer(0.2 + 0.25 * i).timeout.connect(Audio.play.bind("star", 0.0, 1.0 + 0.12 * i))
+			# Récord batido: dos notas más agudas y rápidas detrás de las estrellas.
+			if record and had_record:
+				var after := 0.2 + 0.25 * stars + 0.1
+				get_tree().create_timer(after).timeout.connect(Audio.play.bind("star", -2.0, 1.6))
+				get_tree().create_timer(after + 0.1).timeout.connect(Audio.play.bind("star", -2.0, 2.0))
 			# Valoración en la tienda (solo al superar 3 niveles y al terminarlos todos).
 			get_tree().create_timer(1.5).timeout.connect(GameServices.maybe_request_review)
 		)

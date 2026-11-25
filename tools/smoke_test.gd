@@ -20,6 +20,7 @@ func _ready() -> void:
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
 		await _check_level(i)
+	await _check_endings()
 	if _failures.is_empty():
 		print("SMOKE OK (%d niveles)" % GameState.LEVELS.size())
 	else:
@@ -73,6 +74,59 @@ func _check_menu_fits() -> void:
 				_failures.append("menú %s (%s) mide %s y no cabe en 1280x720" % [screen_name, locale, need])
 		menu.free()
 	GameState.apply_language()
+
+
+## Pantallas de final: superar el nivel 1 dos veces (la segunda sin batir el récord) y agotar
+## el tiempo. Comprueba que salen los textos y botones esperados. Nada se guarda (persist=false).
+func _check_endings() -> void:
+	var gs := GameState
+	var saved := [gs.best_times.duplicate(), gs.unlocked, gs.achievements.duplicate()]
+	gs.best_times = {}
+	gs.unlocked = 1
+	for attempt in ["primera", "sin récord", "tiempo"]:
+		gs.current_level = 0
+		var game: Node = GAME_SCENE.instantiate()
+		add_child(game)
+		while game.state != game.State.PLAYING:
+			await get_tree().physics_frame
+		game.elapsed = 40.0 if attempt == "primera" else 55.0
+		game._finish(attempt != "tiempo")
+		for _i in 120:  # el panel aparece a los 1.2-1.4 s
+			await get_tree().process_frame
+		if game._overlay == null:
+			_failures.append("final (%s): no aparece el panel" % attempt)
+		else:
+			var text := _texts(game._overlay)
+			var record := tr("RECORD_FMT") % 40.0
+			match attempt:
+				"primera":
+					_expect_end(gs.best_times.get(0) == 40.0, attempt, "no guarda el récord")
+					_expect_end(tr("NEXT_LEVEL") in text and tr("RETRY") in text, attempt, "faltan botones: " + str(text))
+				"sin récord":
+					_expect_end(gs.best_times.get(0) == 40.0, attempt, "un tiempo peor no debe ser récord")
+					_expect_end(text.any(func(t: String) -> bool: return record in t and "+15.00" in t), attempt,
+						"falta el récord con la diferencia: " + str(text))
+				"tiempo":
+					_expect_end(tr("NEXT_LEVEL") in text, attempt, "falta Siguiente nivel (ya desbloqueado)")
+		game.queue_free()
+		await get_tree().process_frame
+	gs.best_times = saved[0]
+	gs.unlocked = saved[1]
+	gs.achievements = saved[2]
+
+
+func _expect_end(condition: bool, attempt: String, what: String) -> void:
+	if not condition:
+		_failures.append("final (%s): %s" % [attempt, what])
+
+
+## Textos de todos los Label y Button bajo `node`.
+func _texts(node: Node) -> Array[String]:
+	var out: Array[String] = []
+	for child in node.find_children("*", "", true, false):
+		if child is Label or child is Button:
+			out.append(child.text)
+	return out
 
 
 func _expect(condition: bool, what: String) -> void:
