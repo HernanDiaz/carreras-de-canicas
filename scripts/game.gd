@@ -371,6 +371,7 @@ func _pause() -> void:
 		_show_overlay(tr("RACE_IN_PROGRESS"), tr("RACE_CONTINUES"), [[keep, _resume], [tr("LEAVE_RACE"), _leave_race]])
 		return
 	get_tree().paused = true
+	Audio.duck_music(true)
 	# Recordatorio de lo que hay que batir: récord y tiempo de la siguiente estrella.
 	var index := GameState.current_level
 	var goal := ""
@@ -386,6 +387,7 @@ func _pause() -> void:
 func _resume() -> void:
 	_close_overlay()
 	get_tree().paused = false
+	Audio.duck_music(false)
 	if state == State.PLAYING:
 		# Al volver puede que sujetes el móvil de otra forma.
 		marble.calibrate()
@@ -393,6 +395,7 @@ func _resume() -> void:
 
 func _restart() -> void:
 	get_tree().paused = false
+	Audio.duck_music(false)
 	get_tree().reload_current_scene()
 
 

@@ -189,7 +189,16 @@ func _check_level(index: int) -> void:
 		game.notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
 		if not get_tree().paused or game._overlay == null:
 			_failures.append("nivel 1: no se pausa al ir al fondo en la cuenta atrás")
+		var music_bus := AudioServer.get_bus_index(Audio.MUSIC_BUS)
+		for _i in 30:
+			await get_tree().process_frame
+		if AudioServer.get_bus_volume_db(music_bus) > -5.0:
+			_failures.append("nivel 1: la música no baja en la pausa")
 		game._resume()
+		for _i in 30:
+			await get_tree().process_frame
+		if absf(AudioServer.get_bus_volume_db(music_bus)) > 0.5:
+			_failures.append("nivel 1: la música no vuelve a su volumen al reanudar")
 	# Cuenta atrás (3 s a 60 fps fijos) y un rato rodando sin tocar nada.
 	var frames := 0
 	while game.state != game.State.PLAYING and frames < 400:

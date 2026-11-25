@@ -28,12 +28,15 @@ const SFX_BUS := "SFX"
 ## Volumen de la música (más baja que los efectos para que no canse).
 const MUSIC_DB := -9.0
 const VOICES := 10
+## Cuánto baja la música con el juego en pausa.
+const DUCK_DB := -10.0
 
 var _voices: Array[AudioStreamPlayer] = []
 var _next_voice := 0
 var _music: AudioStreamPlayer
 var _music_name := ""
 var _music_tween: Tween
+var _duck_tween: Tween
 
 
 func _ready() -> void:
@@ -105,6 +108,17 @@ func play_music(music_name: String) -> void:
 	)
 	if music_name != "":
 		_music_tween.tween_property(_music, "volume_db", MUSIC_DB, 0.8)
+
+
+## Baja la música (pausa) o la devuelve a su volumen, con un fundido corto. Actúa sobre el bus,
+## así no se pelea con los fundidos de play_music().
+func duck_music(on: bool) -> void:
+	var bus := AudioServer.get_bus_index(MUSIC_BUS)
+	if _duck_tween != null and _duck_tween.is_valid():
+		_duck_tween.kill()
+	_duck_tween = create_tween()
+	_duck_tween.tween_method(func(db: float) -> void: AudioServer.set_bus_volume_db(bus, db),
+		AudioServer.get_bus_volume_db(bus), DUCK_DB if on else 0.0, 0.3)
 
 
 ## Reproductor propio para un sonido continuo (rodar), que controla quien lo crea.

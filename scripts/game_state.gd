@@ -88,12 +88,14 @@ func play(index: int) -> void:
 	Net.leave()
 	current_level = index
 	get_tree().paused = false
+	Audio.duck_music(false)
 	get_tree().change_scene_to_file(GAME_SCENE)
 
 
 func go_to_menu(screen := "levels") -> void:
 	open_screen = screen
 	get_tree().paused = false
+	Audio.duck_music(false)
 	get_tree().change_scene_to_file(MENU_SCENE)
 
 
