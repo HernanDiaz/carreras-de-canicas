@@ -16,6 +16,7 @@ func _ready() -> void:
 	GameState.persist = false
 	GameState.show_ghost = false
 	_check_cloud_merge()
+	_check_ghost()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -139,6 +140,37 @@ func _texts(node: Node) -> Array[String]:
 	return out
 
 
+## Fantasma: lo que se graba es lo que se reproduce, también tras guardarlo y leerlo del disco.
+func _check_ghost() -> void:
+	var body := Node3D.new()
+	add_child(body)
+	var recorder := Ghost.Recorder.new()
+	recorder.record(0.0, body)
+	body.position = Vector3(10, 2, -4)
+	recorder.record(1.0, body)
+	var ghost := Ghost.from_samples(recorder.samples, SphereMesh.new())
+	if ghost == null:
+		_failures.append("fantasma: no se crea con una vuelta de 1 s")
+	else:
+		ghost.seek(0.5 / Ghost.RATE)  # a medio camino entre la 1.ª y la 2.ª muestra
+		if not ghost.position.is_equal_approx(Vector3(5, 1, -2)):
+			_failures.append("fantasma: no interpola entre muestras (%s)" % ghost.position)
+		ghost.seek(99.0)
+		if not ghost.position.is_equal_approx(Vector3(10, 2, -4)):
+			_failures.append("fantasma: al acabar no se queda en el último punto (%s)" % ghost.position)
+		ghost.free()
+	# Guardar y leer del disco (en un nivel que no existe, para no tocar los del jugador).
+	const TEST_INDEX := 998
+	GameState.persist = true
+	GameState.save_ghost(TEST_INDEX, recorder.samples)
+	GameState.persist = false
+	var loaded := GameState.load_ghost(TEST_INDEX)
+	DirAccess.remove_absolute(GameState._ghost_path(TEST_INDEX))
+	if loaded != recorder.samples:
+		_failures.append("fantasma: lo leído del disco no coincide con lo guardado")
+	body.free()
+
+
 func _expect(condition: bool, what: String) -> void:
 	if not condition:
 		_failures.append("nube: " + what)
@@ -212,6 +244,8 @@ func _check_level(index: int) -> void:
 		await get_tree().physics_frame
 	var level: Level = game.level
 	var name := "nivel %d" % (index + 1)
+	if level.goal_center == Vector3.ZERO or level.goal_center.distance_to(level.spawn_point) < 5.0:
+		_failures.append("%s: la meta no está colocada (%s)" % [name, level.goal_center])
 	if game.state != game.State.PLAYING:
 		_failures.append("%s: no empieza (estado %d)" % [name, game.state])
 	elif not marble.is_grounded():
