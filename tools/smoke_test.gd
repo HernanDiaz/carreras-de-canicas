@@ -563,6 +563,17 @@ func _check_level(index: int) -> void:
 		await get_tree().physics_frame
 	var level: Level = game.level
 	var name := "nivel %d" % (index + 1)
+	# Bloques iguales comparten malla (ver Level._add_box).
+	var boxes := 0
+	var unique := {}
+	for node in level.find_children("*", "MeshInstance3D", true, false):
+		var m: Mesh = (node as MeshInstance3D).mesh
+		if m is BoxMesh:
+			boxes += 1
+			unique[m] = true
+	print("SMOKE %s: %d bloques, %d mallas" % [name, boxes, unique.size()])
+	if boxes > 10 and unique.size() == boxes:
+		_failures.append("%s: ningún bloque comparte malla" % name)
 	if level.goal_center == Vector3.ZERO or level.goal_center.distance_to(level.spawn_point) < 5.0:
 		_failures.append("%s: la meta no está colocada (%s)" % [name, level.goal_center])
 	if game.state != game.State.PLAYING:

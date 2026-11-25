@@ -51,6 +51,7 @@ var spawn_point := Vector3(0.0, 1.0, 0.0)
 var lowest_y := 0.0
 ## true mientras la canica está sobre el damero de la meta.
 var marble_on_goal := false
+var _box_cache := {}
 ## Centro del damero de la meta (a ras de suelo).
 var goal_center := Vector3.ZERO
 
@@ -1058,18 +1059,23 @@ func add_pendulum(floor_pos: Vector3, length: float, amplitude_degrees: float, p
 
 ## Añade forma de colisión + malla a `body`. Devuelve {collision, mesh}.
 func _add_box(body: CollisionObject3D, size: Vector3, style: Dictionary, xform := Transform3D.IDENTITY) -> Dictionary:
-	var shape := BoxShape3D.new()
-	shape.size = size
+	# Bloques iguales (tamaño y estilo) comparten forma, malla y material: menos memoria y el
+	# motor puede agrupar su dibujado. Nadie los modifica después (solo se ocultan o se mueven).
+	var key := "%s|%d" % [size, style.hash()]
+	if not _box_cache.has(key):
+		var new_shape := BoxShape3D.new()
+		new_shape.size = size
+		var new_mesh := BoxMesh.new()
+		new_mesh.size = size
+		new_mesh.material = _track_material(size, style)
+		_box_cache[key] = [new_shape, new_mesh]
 	var collision := CollisionShape3D.new()
-	collision.shape = shape
+	collision.shape = _box_cache[key][0]
 	collision.transform = xform
 	body.add_child(collision)
 
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	mesh.material = _track_material(size, style)
 	var instance := MeshInstance3D.new()
-	instance.mesh = mesh
+	instance.mesh = _box_cache[key][1]
 	instance.transform = xform
 	body.add_child(instance)
 	return {collision = collision, mesh = instance}
