@@ -120,6 +120,8 @@ func _ready() -> void:
 		_ghost = Ghost.load_for(GameState.current_level, (marble.get_node("Mesh") as MeshInstance3D).mesh)
 		if _ghost != null:
 			add_child(_ghost)
+	if not race and GameState.best_times.has(GameState.current_level):
+		_add_record_label(GameState.best_times[GameState.current_level])
 	marble.global_position = respawn_point
 	marble.stop_in_place()
 	camera.global_position = respawn_point + camera.offset
@@ -259,6 +261,25 @@ func _update_goal(delta: float) -> void:
 		_last_goal_tick = -1
 		_show_message(tr("BACK_TO_GOAL"), 1.0)
 	level.set_goal_progress(_goal_hold / GOAL_HOLD_TIME)
+
+
+## Récord del nivel en pequeño bajo el contador: lo que hay que batir, sin tener que pausar.
+func _add_record_label(best: float) -> void:
+	var label := Label.new()
+	label.name = "RecordLabel"
+	label.text = tr("RECORD_FMT") % best
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 26)
+	label.add_theme_constant_override("outline_size", 8)
+	label.add_theme_color_override("font_outline_color", Color.BLACK)
+	label.modulate = Color(1, 1, 1, 0.8)
+	label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	label.offset_left = -160.0
+	label.offset_right = 160.0
+	label.offset_top = 96.0
+	label.offset_bottom = 130.0
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	time_label.get_parent().add_child(label)
 
 
 ## "Latido" del contador en los últimos segundos (se ve aunque juegues sin sonido).

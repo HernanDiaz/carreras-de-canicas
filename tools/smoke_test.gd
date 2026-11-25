@@ -91,6 +91,10 @@ func _check_endings() -> void:
 		add_child(game)
 		while game.state != game.State.PLAYING:
 			await get_tree().physics_frame
+		# El récord aparece bajo el contador solo si ya hay uno.
+		var has_label: bool = game.has_node("HUD/Root/RecordLabel")
+		if has_label != (attempt != "primera"):
+			_failures.append("final (%s): etiqueta de récord en el HUD = %s" % [attempt, has_label])
 		game.elapsed = 30.0 if attempt == "primera" else 55.0
 		game._finish(attempt != "tiempo")
 		for _i in 120:  # el panel aparece a los 1.2-1.4 s
