@@ -305,22 +305,41 @@ func load_data() -> void:
 	var cfg := ConfigFile.new()
 	if cfg.load(SAVE_PATH) != OK:
 		return
-	unlocked = clampi(cfg.get_value("progreso", "desbloqueados", 1), 1, LEVELS.size())
+	_apply_config(cfg)
+
+
+## Aplica lo leído del archivo. Cada valor se comprueba: si tiene un tipo que no toca (archivo
+## dañado o editado a mano) se queda el valor por defecto en vez de dar error al arrancar.
+func _apply_config(cfg: ConfigFile) -> void:
+	unlocked = clampi(_value(cfg, "progreso", "desbloqueados", 1), 1, LEVELS.size())
 	_read_records(cfg)
-	achievements.assign(cfg.get_value("progreso", "logros", []))
-	resets = cfg.get_value("progreso", "reinicios", 0)
-	review_stage = cfg.get_value("progreso", "valoracion", 0)
+	achievements.assign(_value(cfg, "progreso", "logros", []).filter(func(a: Variant) -> bool: return a is String))
+	resets = maxi(_value(cfg, "progreso", "reinicios", 0), 0)
+	review_stage = _value(cfg, "progreso", "valoracion", 0)
 	# Si una actualización añade niveles, el siguiente al último superado queda desbloqueado.
 	for index in best_times:
 		unlocked = clampi(maxi(unlocked, index + 2), 1, LEVELS.size())
-	tilt_degrees = cfg.get_value("opciones", "inclinacion", tilt_degrees)
-	tilt_custom = cfg.get_value("opciones", "inclinacion_elegida", false)
-	invert_x = cfg.get_value("opciones", "invertir_x", invert_x)
-	invert_y = cfg.get_value("opciones", "invertir_y", invert_y)
-	show_debug = cfg.get_value("opciones", "datos_sensor", show_debug)
-	show_ghost = cfg.get_value("opciones", "fantasma", show_ghost)
-	music_on = cfg.get_value("opciones", "musica", music_on)
-	sound_on = cfg.get_value("opciones", "sonidos", sound_on)
-	vibration_on = cfg.get_value("opciones", "vibracion", vibration_on)
-	player_name = cfg.get_value("opciones", "nombre", player_name)
-	language = cfg.get_value("opciones", "idioma", language)
+	tilt_degrees = clampf(_value(cfg, "opciones", "inclinacion", tilt_degrees), 10.0, 35.0)
+	tilt_custom = _value(cfg, "opciones", "inclinacion_elegida", false)
+	invert_x = _value(cfg, "opciones", "invertir_x", invert_x)
+	invert_y = _value(cfg, "opciones", "invertir_y", invert_y)
+	show_debug = _value(cfg, "opciones", "datos_sensor", show_debug)
+	show_ghost = _value(cfg, "opciones", "fantasma", show_ghost)
+	music_on = _value(cfg, "opciones", "musica", music_on)
+	sound_on = _value(cfg, "opciones", "sonidos", sound_on)
+	vibration_on = _value(cfg, "opciones", "vibracion", vibration_on)
+	player_name = _value(cfg, "opciones", "nombre", player_name)
+	language = _value(cfg, "opciones", "idioma", language)
+	if language not in LANGUAGES:
+		language = ""
+
+
+## Valor del archivo si es del mismo tipo que `default` (un entero vale donde se espera un
+## decimal); si no, `default`.
+func _value(cfg: ConfigFile, section: String, key: String, default: Variant) -> Variant:
+	var value: Variant = cfg.get_value(section, key, default)
+	if typeof(value) == typeof(default):
+		return value
+	if default is float and value is int:
+		return float(value)
+	return default

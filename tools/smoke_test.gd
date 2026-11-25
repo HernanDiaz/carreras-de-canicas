@@ -21,6 +21,7 @@ func _ready() -> void:
 	_check_wasd()
 	_check_bad_save()
 	_check_suggested()
+	_check_bad_options()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -198,6 +199,38 @@ func _check_ghost() -> void:
 	if loaded != recorder.samples:
 		_failures.append("fantasma: lo leído del disco no coincide con lo guardado")
 	body.free()
+
+
+## Opciones con tipos equivocados en el archivo: se ignoran (sin error) y lo válido se carga.
+func _check_bad_options() -> void:
+	var gs := GameState
+	var fields := ["unlocked", "best_times", "achievements", "resets", "review_stage", "tilt_degrees",
+		"tilt_custom", "invert_x", "invert_y", "show_debug", "show_ghost", "music_on", "sound_on",
+		"vibration_on", "player_name", "language"]
+	var saved := {}
+	for f in fields:
+		var v: Variant = gs.get(f)
+		saved[f] = v.duplicate() if v is Dictionary or v is Array else v
+	gs.music_on = true
+	gs.player_name = "Ana"
+	var cfg := ConfigFile.new()
+	cfg.set_value("progreso", "desbloqueados", "muchos")
+	cfg.set_value("progreso", "logros", ["first_win", 7])
+	cfg.set_value("opciones", "inclinacion", 90)
+	cfg.set_value("opciones", "musica", "no")
+	cfg.set_value("opciones", "nombre", 42)
+	cfg.set_value("opciones", "idioma", "klingon")
+	cfg.set_value("opciones", "invertir_x", true)
+	gs._apply_config(cfg)
+	var got := [gs.unlocked, gs.achievements, gs.tilt_degrees, gs.music_on, gs.player_name, gs.language, gs.invert_x]
+	var want := [1, ["first_win"], 35.0, true, "Ana", "", true]
+	if str(got) != str(want):
+		_failures.append("opciones dañadas: se cargan %s (debe %s)" % [got, want])
+	for f in fields:
+		if f == "achievements":
+			gs.achievements.assign(saved[f])
+		else:
+			gs.set(f, saved[f])
 
 
 ## Continuar: primero el nivel sin superar; con todos superados, el primero sin 3 estrellas.
