@@ -156,7 +156,9 @@ func _process(delta: float) -> void:
 				marble.release()
 				Audio.play("go")
 				Audio.vibrate(30)
-				_show_message(tr("GO") + _start_hint(), 1.2)
+				# Con pista, un poco más de tiempo para leerla.
+				var hint := _start_hint()
+				_show_message(tr("GO") + hint, 1.2 if hint == "" else 3.0)
 		State.PLAYING:
 			time_left = maxf(time_left - delta, 0.0)
 			elapsed += delta
