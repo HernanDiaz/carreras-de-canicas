@@ -165,7 +165,9 @@ func _process(delta: float) -> void:
 					_ghost.seek(elapsed)
 			if time_left < 10.0 and ceili(time_left) != _last_tick:
 				_last_tick = ceili(time_left)
-				Audio.play("tick", -4.0, 0.8)
+				# Los 3 últimos segundos, más agudos y fuertes: se nota que se acaba.
+				var urgent := _last_tick <= 3
+				Audio.play("tick", -1.0 if urgent else -4.0, 1.15 if urgent else 0.8)
 				_pulse_time()
 			if not _fall_sounded and marble.global_position.y < level.lowest_y - 1.5:
 				_fall_sounded = true
