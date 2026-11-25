@@ -477,6 +477,14 @@ func _check_level(index: int) -> void:
 	var marble: Marble = game.marble
 	if index == 0:
 		# El contador redondea hacia arriba: rojo solo cuando ya marca menos de 10.
+		# Pista al salir: en el PC (sin sensor) la del ratón; en carrera ninguna.
+		if game._start_hint() != "
+" + tr("MOUSE_HINT"):
+			_failures.append("nivel 1: falta la pista del ratón al salir")
+		game.race = true
+		if game._start_hint() != "":
+			_failures.append("nivel 1: en carrera no debe haber pista")
+		game.race = false
 		var time_before: float = game.time_left
 		for case in [[60.0, "60.0", false], [9.96, "10.0", false], [9.9, "9.9", true], [0.04, "0.1", true], [0.0, "0.0", true]]:
 			game.time_left = case[0]

@@ -156,9 +156,7 @@ func _process(delta: float) -> void:
 				marble.release()
 				Audio.play("go")
 				Audio.vibrate(30)
-				var show_hint := GameState.current_level == 0 and not race and not tilt_simulator.has_real_sensor()
-				var hint := "\n" + tr("MOUSE_HINT") if show_hint else ""
-				_show_message(tr("GO") + hint, 1.2)
+				_show_message(tr("GO") + _start_hint(), 1.2)
 		State.PLAYING:
 			time_left = maxf(time_left - delta, 0.0)
 			elapsed += delta
@@ -247,6 +245,18 @@ func _unhandled_input(event: InputEvent) -> void:
 func _on_joy_connection_changed(_device: int, connected: bool) -> void:
 	if not connected and state in [State.PLAYING, State.COUNTDOWN] and not race:
 		_pause()
+
+
+## Pista de controles al salir en el nivel 1: en el PC siempre (ratón, flechas o WASD); en el
+## móvil solo hasta que lo superas por primera vez.
+func _start_hint() -> String:
+	if GameState.current_level != 0 or race:
+		return ""
+	if not tilt_simulator.has_real_sensor():
+		return "\n" + tr("MOUSE_HINT")
+	if not GameState.best_times.has(0):
+		return "\n" + tr("TILT_HINT")
+	return ""
 
 
 ## R (o Select/Back del mando) reinicia el nivel al momento, para repetir intentos sin pasar
