@@ -12,8 +12,10 @@ var _failures: Array[String] = []
 
 
 func _ready() -> void:
-	# Que la prueba no toque las opciones del jugador (fantasma desactivado, sin sonido).
+	# Nada de lo que pase en la prueba se guarda: el progreso del jugador queda intacto.
+	GameState.persist = false
 	GameState.show_ghost = false
+	_check_cloud_merge()
 	for i in GameState.LEVELS.size():
 		await _check_level(i)
 	if _failures.is_empty():
@@ -22,6 +24,48 @@ func _ready() -> void:
 		for failure in _failures:
 			print("SMOKE FAIL ", failure)
 	get_tree().quit(0 if _failures.is_empty() else 1)
+
+
+func _expect(condition: bool, what: String) -> void:
+	if not condition:
+		_failures.append("nube: " + what)
+
+
+## Mezcla del progreso de la nube (GameState.merge_cloud) con casos típicos y datos raros.
+func _check_cloud_merge() -> void:
+	var gs := GameState
+	var saved := [gs.best_times.duplicate(), gs.achievements.duplicate(), gs.resets, gs.unlocked]
+	gs.best_times = {0: 30.0, 1: 50.0}
+	gs.achievements = ["a"]
+	gs.resets = 0
+	gs.unlocked = 3
+
+	var remote := JSON.stringify({resets = 0, times = {"0": 25.0, "1": 60.0, "4": 40.0}, achievements = ["b"]})
+	_expect(gs.merge_cloud(remote), "una mezcla con mejoras debería cambiar algo")
+	_expect(is_equal_approx(gs.best_times[0], 25.0), "se queda con el mejor tiempo (nivel 1)")
+	_expect(is_equal_approx(gs.best_times[1], 50.0), "no empeora un récord local (nivel 2)")
+	_expect(gs.best_times.has(4) and gs.unlocked == 6, "un nivel nuevo de la nube desbloquea el siguiente")
+	_expect(gs.achievements.has("a") and gs.achievements.has("b"), "une los logros")
+	_expect(not gs.merge_cloud(remote), "mezclar dos veces lo mismo no cambia nada")
+
+	_expect(not gs.merge_cloud("no es json"), "ignora texto que no es JSON")
+	_expect(not gs.merge_cloud("[1, 2]"), "ignora JSON que no es un diccionario")
+	gs.merge_cloud(JSON.stringify({resets = 0, times = {"x": 1.0, "99": 1.0, "2": -5.0}}))
+	_expect(not gs.best_times.has(2) and not gs.best_times.has(99) and is_equal_approx(gs.best_times[0], 25.0),
+		"ignora niveles inexistentes, claves no numéricas y tiempos no positivos")
+
+	# Reinicio en otro aparato: se borran los récords de aquí y se adoptan los de la nube.
+	gs.merge_cloud(JSON.stringify({resets = 1, times = {"0": 33.0}}))
+	_expect(gs.resets == 1 and gs.best_times.size() == 1 and is_equal_approx(gs.best_times[0], 33.0),
+		"un reinicio más reciente en la nube manda")
+	_expect(gs.achievements.has("a"), "los logros sobreviven al reinicio")
+	# Datos viejos (de antes del reinicio de aquí): no deben resucitar récords.
+	_expect(not gs.merge_cloud(JSON.stringify({resets = 0, times = {"0": 10.0}})), "ignora récords anteriores al reinicio")
+
+	gs.best_times = saved[0]
+	gs.achievements = saved[1]
+	gs.resets = saved[2]
+	gs.unlocked = saved[3]
 
 
 func _check_level(index: int) -> void:

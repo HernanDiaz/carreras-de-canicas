@@ -39,6 +39,8 @@ var achievements: Array[String] = []
 ## Veces que se ha reiniciado el progreso (en cualquier aparato). Sirve para que, al mezclar con
 ## la copia de la nube, un reinicio no se deshaga con los récords antiguos de otro aparato.
 var resets := 0
+## false en las pruebas automáticas (tools/smoke_test.gd): no se escribe nada en disco.
+var persist := true
 ## Hasta qué punto de REVIEW_AFTER_LEVELS se ha pedido ya la valoración.
 var review_stage := 0
 
@@ -164,7 +166,8 @@ func _clear_records() -> void:
 	best_times.clear()
 	# Los logros ya conseguidos no se pierden (en Game Center / Play Juegos tampoco).
 	for index in LEVELS.size():
-		DirAccess.remove_absolute(_ghost_path(index))
+		if persist:
+			DirAccess.remove_absolute(_ghost_path(index))
 
 
 ## Progreso que se guarda en la nube (iCloud / Juegos guardados de Play Juegos), en JSON.
@@ -199,6 +202,8 @@ func merge_cloud(text: String) -> bool:
 	var times: Variant = data.get("times", {})
 	if remote_resets == resets and times is Dictionary:
 		for key: Variant in times:
+			if not str(key).is_valid_int():
+				continue
 			var index := int(key)
 			var seconds := float(times[key])
 			if index < 0 or index >= LEVELS.size() or seconds <= 0.0:
@@ -215,6 +220,8 @@ func merge_cloud(text: String) -> bool:
 
 
 func save_ghost(index: int, samples: PackedFloat32Array) -> void:
+	if not persist:
+		return
 	DirAccess.make_dir_recursive_absolute(GHOST_DIR)
 	var file := FileAccess.open(_ghost_path(index), FileAccess.WRITE)
 	if file != null:
@@ -236,6 +243,8 @@ func _ghost_path(index: int) -> String:
 
 
 func save_data() -> void:
+	if not persist:
+		return
 	var cfg := ConfigFile.new()
 	cfg.set_value("progreso", "desbloqueados", unlocked)
 	for index in best_times:
