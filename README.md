@@ -108,7 +108,13 @@ Godot 4.7.2 está instalado en `%LOCALAPPDATA%\Programs\Godot`.
 
 Si añades scripts nuevos con `class_name`, abre el proyecto una vez con **Abrir editor.bat** antes de usar **Jugar.bat**, para que Godot los registre.
 
-**Prueba automática de los niveles** (`tools/smoke_test.tscn`): carga cada nivel, espera a la salida y comprueba que la canica se apoya en el suelo y no se cae ni reaparece sola. Escribe `SMOKE OK` o qué nivel falla:
+**Prueba automática de los niveles** (`tools/smoke_test.tscn`): carga cada nivel, espera a la salida y comprueba que la canica se apoya en el suelo y no se cae ni reaparece sola. Además comprueba, sin guardar nada en disco:
+- que los paneles (fin de nivel, tiempo agotado) y todas las pantallas del menú caben en 1280x720 en los 15 idiomas;
+- los finales (récord, diferencia, siguiente estrella, botones, música más baja) y la pausa (al ir al fondo, al desconectar el mando, Esc para volver);
+- el fantasma (grabar, guardar, cargar, descartar archivos rotos), la cámara, el contador, la meta, WASD, R/mando y Esc en el menú;
+- que un archivo guardado o de la nube con datos raros no rompe nada, y que «Continuar» sugiere el nivel correcto.
+
+Escribe `SMOKE OK` o lo que falla:
 
 ```
 Godot_v4.7.2-stable_win64.exe --headless --path . --fixed-fps 60 res://tools/smoke_test.tscn
