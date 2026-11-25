@@ -92,6 +92,18 @@ func _check_menu_fits() -> void:
 			var need := (screen.get_child(0) as Control).get_combined_minimum_size()
 			if need.y > 720.0 or need.x > 1280.0:
 				_failures.append("menú %s (%s) mide %s y no cabe en 1280x720" % [screen_name, locale, need])
+		if locale == TranslationServer.get_loaded_locales()[0]:
+			# Esc / B del mando: de Clasificación a Elegir nivel, de ahí al principal, y ahí nada.
+			var cancel := InputEventAction.new()
+			cancel.action = "ui_cancel"
+			cancel.pressed = true
+			var path := []
+			menu._show("ranking")
+			for _i in 3:
+				menu._unhandled_input(cancel)
+				path.append(menu._current)
+			if path != ["levels", "main", "main"]:
+				_failures.append("menú: Esc va por %s (debe levels, main, main)" % [path])
 		menu.free()
 	GameState.apply_language()
 

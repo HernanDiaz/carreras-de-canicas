@@ -93,12 +93,25 @@ func _notification(what: int) -> void:
 	elif what == NOTIFICATION_WM_GO_BACK_REQUEST:
 		if _current == "main":
 			get_tree().quit()
-		elif _current == "lobby":
-			_leave_lobby()
-		elif _current == "ranking":
-			_show("levels")
 		else:
-			_show("main")
+			_go_back()
+
+
+## Esc o el botón B del mando vuelven atrás como el atrás de Android (sin salir del juego
+## desde el menú principal: para eso está el botón Salir).
+func _unhandled_input(event: InputEvent) -> void:
+	if event.is_action_pressed("ui_cancel") and _current != "main":
+		get_viewport().set_input_as_handled()
+		_go_back()
+
+
+func _go_back() -> void:
+	if _current == "lobby":
+		_leave_lobby()
+	elif _current == "ranking":
+		_show("levels")
+	else:
+		_show("main")
 
 
 func _show(screen_name: String) -> void:
