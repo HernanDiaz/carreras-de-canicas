@@ -141,6 +141,8 @@ func _check_endings() -> void:
 		game._finish(attempt != "tiempo")
 		for _i in 120:  # el panel aparece a los 1.2-1.4 s
 			await get_tree().process_frame
+		if AudioServer.get_bus_volume_db(AudioServer.get_bus_index(Audio.MUSIC_BUS)) > -5.0:
+			_failures.append("final (%s): la música no baja" % attempt)
 		if game._overlay == null:
 			_failures.append("final (%s): no aparece el panel" % attempt)
 		else:
@@ -171,6 +173,7 @@ func _check_endings() -> void:
 	gs.best_times = saved[0]
 	gs.unlocked = saved[1]
 	gs.achievements = saved[2]
+	Audio.duck_music(false)
 
 
 func _expect_end(condition: bool, attempt: String, what: String) -> void:

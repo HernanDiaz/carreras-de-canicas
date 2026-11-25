@@ -370,6 +370,9 @@ func _finish(won: bool) -> void:
 		_finish_race(won)
 		return
 	pause_button.disabled = true
+	# La música baja un poco para que se oiga el final (y se lea tranquilo el panel). Vuelve a su
+	# volumen al reintentar, pasar de nivel o ir al menú.
+	Audio.duck_music(true)
 	if won:
 		Audio.play("win")
 		Audio.vibrate(120)

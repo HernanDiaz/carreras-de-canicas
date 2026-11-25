@@ -213,7 +213,7 @@ Para jugar desde el PC contra un móvil, Windows puede pedir permiso en el corta
 - **Pausa** (botón **II**, Esc, Start del mando o atrás de Android; lo mismo la cierra): muestra tu récord y el tiempo de la siguiente estrella, y baja la música. Si la app pasa a segundo plano (también durante la cuenta atrás) o se desconecta el mando, se pausa sola.
 - Durante la partida, bajo el contador aparece tu **récord** del nivel; en los últimos 10 segundos el contador late y se pone rojo.
 - Al reaparecer tras una caída la canica parpadea un momento.
-- **Fin de nivel:** tiempo, caídas, diferencia con tu récord anterior (`-0.84` si lo bates, `+1.20` si no) y el tiempo de la siguiente estrella contado desde tu mejor marca. Con 4 botones se colocan en dos columnas para que quepan en el móvil. Si se acaba el tiempo y el siguiente nivel ya estaba desbloqueado, también se ofrece **Siguiente nivel**.
+- **Fin de nivel:** la música baja un poco (como en la pausa); tiempo, caídas, diferencia con tu récord anterior (`-0.84` si lo bates, `+1.20` si no) y el tiempo de la siguiente estrella contado desde tu mejor marca. Con 4 botones se colocan en dos columnas para que quepan en el móvil. Si se acaba el tiempo y el siguiente nivel ya estaba desbloqueado, también se ofrece **Siguiente nivel**.
 - En el menú, **Esc** o **B** del mando vuelven a la pantalla anterior, como el atrás de Android.
 - **Continuar** (menú principal): entra directamente en el siguiente nivel por superar (con todos superados, en el primero al que le faltan estrellas). En **Elegir nivel** el foco empieza en ese mismo nivel.
 - Las opciones se guardan al salir de la pantalla de Opciones de cualquier forma (Volver, atrás de Android o cerrando la app).
