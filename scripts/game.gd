@@ -158,6 +158,7 @@ func _process(delta: float) -> void:
 			if time_left < 10.0 and ceili(time_left) != _last_tick:
 				_last_tick = ceili(time_left)
 				Audio.play("tick", -4.0, 0.8)
+				_pulse_time()
 			if not _fall_sounded and marble.global_position.y < level.lowest_y - 1.5:
 				_fall_sounded = true
 				Audio.play("fall")
@@ -257,6 +258,14 @@ func _update_goal(delta: float) -> void:
 		_last_goal_tick = -1
 		_show_message(tr("BACK_TO_GOAL"), 1.0)
 	level.set_goal_progress(_goal_hold / GOAL_HOLD_TIME)
+
+
+## "Latido" del contador en los últimos segundos (se ve aunque juegues sin sonido).
+func _pulse_time() -> void:
+	time_label.pivot_offset = time_label.size / 2.0
+	time_label.scale = Vector2.ONE * 1.25
+	create_tween().tween_property(time_label, "scale", Vector2.ONE, 0.35) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 ## `reason` es la clave de traducción del aviso (FELL, ACID...).
