@@ -107,6 +107,9 @@ func _free_voice() -> AudioStreamPlayer:
 func play_music(music_name: String) -> void:
 	if music_name == _music_name:
 		return
+	if music_name != "" and not MUSIC.has(music_name):
+		push_warning("Música desconocida: " + music_name)
+		return
 	_music_name = music_name
 	if _music_tween != null and _music_tween.is_valid():
 		_music_tween.kill()

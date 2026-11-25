@@ -259,6 +259,12 @@ func _check_voices() -> void:
 			_failures.append("sonido: la fanfarria se corta aunque hay voces libres")
 	for v in Audio._voices:
 		v.stop()
+	# Un nombre que no existe no rompe nada (ni cambia la música que suena).
+	var music_before: String = Audio._music_name
+	Audio.play("no_existe")
+	Audio.play_music("no_existe")
+	if Audio._music_name != music_before:
+		_failures.append("sonido: una música desconocida cambia la actual")
 	GameState.sound_on = sound_was
 
 
