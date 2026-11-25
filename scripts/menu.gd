@@ -6,6 +6,7 @@ var _current := ""
 var _t := 0.0
 var _marble_visual: MeshInstance3D
 var _level_grid: GridContainer
+var _suggested_card: Button
 var _stars_total: Label
 var _ranking_button: Button
 var _achievements_button: Button
@@ -120,6 +121,8 @@ func _show(screen_name: String) -> void:
 		_screens[key].visible = key == screen_name
 	_current = screen_name
 	var first := _first_button(_screens[screen_name])
+	if screen_name == "levels" and _suggested_card != null:
+		first = _suggested_card
 	if first != null:
 		first.grab_focus()
 
@@ -207,6 +210,14 @@ func _build_ranking() -> Control:
 func _fill_level_grid() -> void:
 	for child in _level_grid.get_children():
 		child.queue_free()
+	# Nivel sugerido (el foco empieza en él): el primero desbloqueado sin superar o, si están
+	# todos superados, el último que se jugó.
+	var suggested := GameState.current_level
+	for i in GameState.LEVELS.size():
+		if GameState.is_unlocked(i) and not GameState.best_times.has(i):
+			suggested = i
+			break
+	_suggested_card = null
 	for i in GameState.LEVELS.size():
 		var info: Dictionary = GameState.LEVELS[i]
 		var detail: String
@@ -230,6 +241,8 @@ func _fill_level_grid() -> void:
 			stars.offset_right = -10.0
 			stars.offset_bottom = 30.0
 			card.add_child(stars)
+			if i == suggested:
+				_suggested_card = card
 		_level_grid.add_child(card)
 	_stars_total.text = "%d / %d" % [GameState.total_stars(), GameState.LEVELS.size() * 3]
 
