@@ -429,6 +429,10 @@ func _check_level(index: int) -> void:
 		# Mandar la app al fondo en la cuenta atrás pausa la partida; al volver sigue.
 		for _i in 30:
 			await get_tree().physics_frame
+		Input.joy_connection_changed.emit(0, false)
+		if not get_tree().paused or game._overlay == null:
+			_failures.append("nivel 1: no se pausa al desconectarse el mando")
+		game._resume()
 		game.notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
 		if not get_tree().paused or game._overlay == null:
 			_failures.append("nivel 1: no se pausa al ir al fondo en la cuenta atrás")

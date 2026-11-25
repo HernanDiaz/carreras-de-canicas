@@ -81,6 +81,7 @@ func _ready() -> void:
 	world_environment.environment = _environment
 	UI.fit_safe_area(hud)
 	race = Net.in_race
+	Input.joy_connection_changed.connect(_on_joy_connection_changed)
 	var info: Dictionary = GameState.LEVELS[GameState.current_level]
 	level = load(info.script).new()
 	level.name = "Level"
@@ -234,6 +235,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			_cycle_watch(-1)
 		elif event.is_action_pressed("ui_right"):
 			_cycle_watch(1)
+
+
+## Si se desconecta el mando (pilas, Bluetooth) a mitad de partida, se pausa como al ir al fondo.
+func _on_joy_connection_changed(_device: int, connected: bool) -> void:
+	if not connected and state in [State.PLAYING, State.COUNTDOWN] and not race:
+		_pause()
 
 
 ## R (o Select/Back del mando) reinicia el nivel al momento, para repetir intentos sin pasar
