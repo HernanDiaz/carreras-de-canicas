@@ -273,6 +273,8 @@ func _update_goal(delta: float) -> void:
 		if left != _last_goal_tick:
 			_last_goal_tick = left
 			Audio.play("tick", 0.0, 1.4)
+			# Un toque suave por segundo: se nota sin mirar la pantalla.
+			Audio.vibrate(15, 0.4)
 		_show_message(tr("HOLD_FMT") % left, 0.2)
 	elif _goal_hold > 0.0:
 		# Un botecito al rodar sobre el damero no te hace empezar de cero: hay un margen.
