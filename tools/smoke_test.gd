@@ -17,6 +17,7 @@ func _ready() -> void:
 	GameState.show_ghost = false
 	_check_cloud_merge()
 	await _check_overlay_fits()
+	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
 		await _check_level(i)
 	if _failures.is_empty():
@@ -51,6 +52,27 @@ func _check_overlay_fits() -> void:
 		overlay.free()
 	GameState.apply_language()
 	holder.free()
+
+
+## Todas las pantallas del menú caben en 1280x720 en todos los idiomas (con los botones de
+## clasificación y logros visibles, el caso más ancho).
+func _check_menu_fits() -> void:
+	var menu_scene: PackedScene = load("res://scenes/menu.tscn")
+	for locale in TranslationServer.get_loaded_locales():
+		TranslationServer.set_locale(locale)
+		var menu: Node = menu_scene.instantiate()
+		add_child(menu)
+		menu._ranking_button.visible = true
+		menu._achievements_button.visible = true
+		menu._fill_level_grid()
+		await get_tree().process_frame
+		for screen_name: String in menu._screens:
+			var screen: Control = menu._screens[screen_name]
+			var need := (screen.get_child(0) as Control).get_combined_minimum_size()
+			if need.y > 720.0 or need.x > 1280.0:
+				_failures.append("menú %s (%s) mide %s y no cabe en 1280x720" % [screen_name, locale, need])
+		menu.free()
+	GameState.apply_language()
 
 
 func _expect(condition: bool, what: String) -> void:
