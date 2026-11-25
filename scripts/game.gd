@@ -219,11 +219,20 @@ func _unhandled_input(event: InputEvent) -> void:
 	# Esc en el PC (mientras está en pausa este nodo no recibe eventos; se sale con los botones)
 	if event.is_action_pressed("ui_cancel") and (state != State.ENDED or race):
 		_pause()
+	elif _is_quick_restart(event):
+		_restart()
 	elif _spectating and _overlay == null:
 		if event.is_action_pressed("ui_left"):
 			_cycle_watch(-1)
 		elif event.is_action_pressed("ui_right"):
 			_cycle_watch(1)
+
+
+## R reinicia el nivel al momento (en el PC, para repetir intentos sin pasar por la pausa).
+## En carrera no: hay más jugadores esperando.
+func _is_quick_restart(event: InputEvent) -> bool:
+	var key := event as InputEventKey
+	return not race and key != null and key.pressed and not key.echo and key.physical_keycode == KEY_R
 
 
 func _notification(what: int) -> void:

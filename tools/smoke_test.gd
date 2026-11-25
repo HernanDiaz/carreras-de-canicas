@@ -257,6 +257,23 @@ func _check_level(index: int) -> void:
 	add_child(game)
 	var marble: Marble = game.marble
 	if index == 0:
+		# R reinicia al momento, pero no si se mantiene pulsada (eco), con otra tecla ni en carrera.
+		var key := InputEventKey.new()
+		key.physical_keycode = KEY_R
+		key.pressed = true
+		if not game._is_quick_restart(key):
+			_failures.append("nivel 1: R no reinicia")
+		key.echo = true
+		var echo_ok: bool = game._is_quick_restart(key)
+		key.echo = false
+		key.physical_keycode = KEY_T
+		var other_ok: bool = game._is_quick_restart(key)
+		key.physical_keycode = KEY_R
+		game.race = true
+		var race_ok: bool = game._is_quick_restart(key)
+		game.race = false
+		if echo_ok or other_ok or race_ok:
+			_failures.append("nivel 1: R reinicia cuando no debe (eco %s, otra tecla %s, carrera %s)" % [echo_ok, other_ok, race_ok])
 		# Mandar la app al fondo en la cuenta atrás pausa la partida; al volver sigue.
 		for _i in 30:
 			await get_tree().physics_frame
