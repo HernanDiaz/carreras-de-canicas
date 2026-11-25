@@ -73,6 +73,14 @@ func _check_level(index: int) -> void:
 	var game: Node = GAME_SCENE.instantiate()
 	add_child(game)
 	var marble: Marble = game.marble
+	if index == 0:
+		# Mandar la app al fondo en la cuenta atrás pausa la partida; al volver sigue.
+		for _i in 30:
+			await get_tree().physics_frame
+		game.notification(NOTIFICATION_APPLICATION_FOCUS_OUT)
+		if not get_tree().paused or game._overlay == null:
+			_failures.append("nivel 1: no se pausa al ir al fondo en la cuenta atrás")
+		game._resume()
 	# Cuenta atrás (3 s a 60 fps fijos) y un rato rodando sin tocar nada.
 	var frames := 0
 	while game.state != game.State.PLAYING and frames < 400:

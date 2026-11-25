@@ -235,7 +235,8 @@ func _notification(what: int) -> void:
 			elif not race:
 				GameState.go_to_menu()
 		NOTIFICATION_APPLICATION_PAUSED, NOTIFICATION_APPLICATION_FOCUS_OUT:
-			if state == State.PLAYING and not race:
+			# También en la cuenta atrás: si no, la partida arranca sola mientras no miras.
+			if state in [State.PLAYING, State.COUNTDOWN] and not race:
 				_pause()
 
 
