@@ -236,6 +236,8 @@ func _read_sensor() -> Vector3:
 func _read_input() -> Vector2:
 	# Teclado para probar en el PC: control directo, sin curva.
 	var keys := Input.get_vector("ui_left", "ui_right", "ui_down", "ui_up")
+	if keys == Vector2.ZERO:
+		keys = _wasd()
 	if keys != Vector2.ZERO:
 		return keys
 
@@ -249,6 +251,14 @@ func _read_input() -> Vector2:
 	if invert_y:
 		v.y = -v.y
 	return shape_tilt(v, dead_zone, response_exponent)
+
+
+## WASD como alternativa a las flechas. Por posición física de la tecla, así en un teclado
+## AZERTY son ZQSD sin tocar nada.
+func _wasd() -> Vector2:
+	var x := float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A))
+	var y := float(Input.is_physical_key_pressed(KEY_W)) - float(Input.is_physical_key_pressed(KEY_S))
+	return Vector2(x, y).normalized()
 
 
 ## En Android, Godot ya entrega el sensor con los ejes girados según la orientación de la

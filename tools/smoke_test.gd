@@ -18,6 +18,7 @@ func _ready() -> void:
 	_check_cloud_merge()
 	_check_ghost()
 	_check_camera_lead()
+	_check_wasd()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -186,6 +187,33 @@ func _check_ghost() -> void:
 	if loaded != recorder.samples:
 		_failures.append("fantasma: lo leído del disco no coincide con lo guardado")
 	body.free()
+
+
+## WASD mueve como las flechas (por posición física) y en diagonal no va más rápido.
+func _check_wasd() -> void:
+	var marble := Marble.new()
+	if marble._wasd() != Vector2.ZERO:
+		_failures.append("WASD: hay movimiento sin pulsar nada")
+	for code in [KEY_W, KEY_D]:
+		_press(code, true)
+	var v: Vector2 = marble._wasd()
+	if not v.is_equal_approx(Vector2(1, 1).normalized()):
+		_failures.append("WASD: W+D da %s" % v)
+	for code in [KEY_W, KEY_D]:
+		_press(code, false)
+	_press(KEY_S, true)
+	if not marble._wasd().is_equal_approx(Vector2(0, -1)):
+		_failures.append("WASD: S da %s" % marble._wasd())
+	_press(KEY_S, false)
+	marble.free()
+
+
+func _press(code: Key, pressed: bool) -> void:
+	var key := InputEventKey.new()
+	key.physical_keycode = code
+	key.pressed = pressed
+	Input.parse_input_event(key)
+	Input.flush_buffered_events()
 
 
 ## Cámara: centrada con la canica parada o congelada; se adelanta hacia donde rueda, con tope.
