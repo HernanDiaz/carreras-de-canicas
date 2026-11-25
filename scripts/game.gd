@@ -379,7 +379,8 @@ func _finish(won: bool) -> void:
 			buttons.append([tr("NEXT_LEVEL"), func() -> void: GameState.play(next)])
 		buttons.append([tr("MENU"), GameState.go_to_menu])
 		get_tree().create_timer(1.2).timeout.connect(func() -> void:
-			_show_overlay(tr("TIME_UP"), tr("TRY_AGAIN"), buttons)
+			var goal := _goal_text()
+			_show_overlay(tr("TIME_UP"), tr("TRY_AGAIN") + ("\n" + goal if goal != "" else ""), buttons)
 		)
 
 
@@ -393,7 +394,12 @@ func _pause() -> void:
 		return
 	get_tree().paused = true
 	Audio.duck_music(true)
-	# Recordatorio de lo que hay que batir: récord y tiempo de la siguiente estrella.
+	_show_overlay(tr("PAUSE"), _goal_text(), [[tr("RESUME"), _resume], [tr("RESTART_LEVEL"), _restart], [tr("MAIN_MENU"), GameState.go_to_menu]])
+
+
+## Lo que hay que batir en este nivel: récord y tiempo de la siguiente estrella ("" si aún no
+## hay récord). Lo usan la pausa y la pantalla de tiempo agotado.
+func _goal_text() -> String:
 	var index := GameState.current_level
 	var goal := ""
 	if GameState.best_times.has(index):
@@ -402,7 +408,7 @@ func _pause() -> void:
 	if stars == 1 or stars == 2:
 		var limits: Array = GameState.LEVELS[index].stars
 		goal += "\n" + tr("NEXT_STAR_FMT") % limits[2 - stars]
-	_show_overlay(tr("PAUSE"), goal, [[tr("RESUME"), _resume], [tr("RESTART_LEVEL"), _restart], [tr("MAIN_MENU"), GameState.go_to_menu]])
+	return goal
 
 
 func _resume() -> void:

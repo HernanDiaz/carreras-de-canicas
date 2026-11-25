@@ -53,6 +53,18 @@ func _check_overlay_fits() -> void:
 		if need.y > 720.0 or need.x > 1280.0:
 			_failures.append("pantalla de fin de nivel (%s) mide %s y no cabe en 1280x720" % [locale, need])
 		overlay.free()
+		# Tiempo agotado: 3 botones en una columna, sin estrellas, y el récord con la siguiente estrella.
+		subtitle = "%s
+%s
+%s" % [tr("TRY_AGAIN"), tr("RECORD_FMT") % 123.4, tr("NEXT_STAR_FMT") % 45.0]
+		overlay = UI.overlay(tr("TIME_UP"), subtitle, buttons.slice(1))
+		holder.add_child(overlay)
+		await get_tree().process_frame
+		panel = overlay.get_child(1).get_child(0)
+		need = panel.get_combined_minimum_size()
+		if need.y > 720.0 or need.x > 1280.0:
+			_failures.append("pantalla de tiempo agotado (%s) mide %s y no cabe en 1280x720" % [locale, need])
+		overlay.free()
 	GameState.apply_language()
 	holder.free()
 
@@ -120,6 +132,10 @@ func _check_endings() -> void:
 						"la siguiente estrella debe contar desde tu mejor marca: " + str(text))
 				"tiempo":
 					_expect_end(tr("NEXT_LEVEL") in text, attempt, "falta Siguiente nivel (ya desbloqueado)")
+					# Igual que en la pausa: recuerda lo que hay que batir.
+					var goal := tr("NEXT_STAR_FMT") % 25.0
+					_expect_end(text.any(func(t: String) -> bool: return record in t and goal in t), attempt,
+						"falta el récord y la siguiente estrella: " + str(text))
 		game.queue_free()
 		await get_tree().process_frame
 	gs.best_times = saved[0]
