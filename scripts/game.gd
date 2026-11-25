@@ -50,6 +50,7 @@ var _last_goal_tick := -1
 var _fall_sounded := false
 ## Veces que has reaparecido en esta partida (logro "sin caerte").
 var _respawns := 0
+var _shown_tenths := -1
 
 @onready var marble: Marble = $Marble
 @onready var camera: MarbleCamera = $Camera
@@ -174,8 +175,7 @@ func _process(delta: float) -> void:
 				_update_goal(delta)
 
 	_update_roll_sound(delta)
-	time_label.text = "%.1f" % time_left
-	time_label.modulate = Color.RED if time_left < 10.0 else Color.WHITE
+	_update_time_label()
 	if debug_label.visible:
 		debug_label.text = marble.debug_text()
 
@@ -292,6 +292,17 @@ func _add_record_label(best: float) -> void:
 
 
 ## "Latido" del contador en los últimos segundos (se ve aunque juegues sin sonido).
+## El contador redondea hacia arriba (no marca 0.0 hasta que se acaba de verdad, ni 10.0 en
+## rojo) y solo se reescribe cuando cambia la décima que se ve.
+func _update_time_label() -> void:
+	var tenths := ceili(time_left * 10.0 - 0.001)
+	if tenths == _shown_tenths:
+		return
+	_shown_tenths = tenths
+	time_label.text = "%.1f" % (tenths / 10.0)
+	time_label.modulate = Color.RED if tenths < 100 else Color.WHITE
+
+
 func _pulse_time() -> void:
 	time_label.pivot_offset = time_label.size / 2.0
 	time_label.scale = Vector2.ONE * 1.25

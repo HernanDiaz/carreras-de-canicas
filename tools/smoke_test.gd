@@ -285,6 +285,15 @@ func _check_level(index: int) -> void:
 	add_child(game)
 	var marble: Marble = game.marble
 	if index == 0:
+		# El contador redondea hacia arriba: rojo solo cuando ya marca menos de 10.
+		var time_before: float = game.time_left
+		for case in [[60.0, "60.0", false], [9.96, "10.0", false], [9.9, "9.9", true], [0.04, "0.1", true], [0.0, "0.0", true]]:
+			game.time_left = case[0]
+			game._update_time_label()
+			var red: bool = game.time_label.modulate == Color.RED
+			if game.time_label.text != case[1] or red != case[2]:
+				_failures.append("contador: con %s muestra %s (rojo %s)" % [case[0], game.time_label.text, red])
+		game.time_left = time_before
 		# R reinicia al momento, pero no si se mantiene pulsada (eco), con otra tecla ni en carrera.
 		var key := InputEventKey.new()
 		key.physical_keycode = KEY_R
