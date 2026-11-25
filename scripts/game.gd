@@ -343,8 +343,14 @@ func _finish(won: bool) -> void:
 	else:
 		Audio.play("lose")
 		_show_message(tr("TIME_UP"), 1.2)
+		var buttons := [[tr("RETRY"), _restart]]
+		# Si el siguiente ya está desbloqueado (repetías un nivel superado), se puede seguir.
+		var next := GameState.current_level + 1
+		if GameState.has_next_level() and GameState.is_unlocked(next):
+			buttons.append([tr("NEXT_LEVEL"), func() -> void: GameState.play(next)])
+		buttons.append([tr("MENU"), GameState.go_to_menu])
 		get_tree().create_timer(1.2).timeout.connect(func() -> void:
-			_show_overlay(tr("TIME_UP"), tr("TRY_AGAIN"), [[tr("RETRY"), _restart], [tr("MENU"), GameState.go_to_menu]])
+			_show_overlay(tr("TIME_UP"), tr("TRY_AGAIN"), buttons)
 		)
 
 
