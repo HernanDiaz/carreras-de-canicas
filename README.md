@@ -213,5 +213,5 @@ Para jugar desde el PC contra un móvil, Windows puede pedir permiso en el corta
 - Durante la partida, bajo el contador aparece tu **récord** del nivel; en los últimos 10 segundos el contador late y se pone rojo.
 - Al reaparecer tras una caída la canica parpadea un momento.
 - **Fin de nivel:** tiempo, caídas, diferencia con tu récord anterior (`-0.84` si lo bates, `+1.20` si no) y el tiempo de la siguiente estrella contado desde tu mejor marca. Con 4 botones se colocan en dos columnas para que quepan en el móvil. Si se acaba el tiempo y el siguiente nivel ya estaba desbloqueado, también se ofrece **Siguiente nivel**.
-- **Continuar** (menú principal): entra directamente en el siguiente nivel por superar. En **Elegir nivel** el foco empieza en ese mismo nivel.
+- **Continuar** (menú principal): entra directamente en el siguiente nivel por superar (con todos superados, en el primero al que le faltan estrellas). En **Elegir nivel** el foco empieza en ese mismo nivel.
 - Las opciones se guardan al salir de la pantalla de Opciones de cualquier forma (Volver, atrás de Android o cerrando la app).

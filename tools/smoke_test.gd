@@ -20,6 +20,7 @@ func _ready() -> void:
 	_check_camera_lead()
 	_check_wasd()
 	_check_bad_save()
+	_check_suggested()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -197,6 +198,30 @@ func _check_ghost() -> void:
 	if loaded != recorder.samples:
 		_failures.append("fantasma: lo leído del disco no coincide con lo guardado")
 	body.free()
+
+
+## Continuar: primero el nivel sin superar; con todos superados, el primero sin 3 estrellas.
+func _check_suggested() -> void:
+	var gs := GameState
+	var saved := [gs.best_times.duplicate(), gs.unlocked, gs.current_level]
+	var n: int = gs.LEVELS.size()
+	gs.best_times = {0: 1.0, 1: 1.0}
+	gs.unlocked = 3
+	if gs.suggested_level() != 2:
+		_failures.append("continuar: con 2 superados sugiere %d (debe 2)" % gs.suggested_level())
+	gs.unlocked = n
+	for i in n:
+		gs.best_times[i] = 1.0  # 3 estrellas
+	gs.best_times[4] = 9999.0  # 1 estrella
+	gs.current_level = 7
+	if gs.suggested_level() != 4:
+		_failures.append("continuar: con todo superado sugiere %d (debe 4, sin 3 estrellas)" % gs.suggested_level())
+	gs.best_times[4] = 1.0
+	if gs.suggested_level() != 7:
+		_failures.append("continuar: con todo a 3 estrellas sugiere %d (debe el último jugado)" % gs.suggested_level())
+	gs.best_times = saved[0]
+	gs.unlocked = saved[1]
+	gs.current_level = saved[2]
 
 
 ## Un archivo guardado con basura no rompe nada: solo se cargan los récords válidos.
