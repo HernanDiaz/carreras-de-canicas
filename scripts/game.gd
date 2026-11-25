@@ -321,9 +321,11 @@ func _finish(won: bool) -> void:
 		elif had_record:
 			subtitle += "\n" + tr("RECORD_FMT") % previous + diff
 		var stars := GameState.stars_for(GameState.current_level, elapsed)
-		if stars < 3:
+		# La siguiente estrella se cuenta desde tu mejor marca (ya guardada), no desde esta vuelta.
+		var best_stars := GameState.stars_of(GameState.current_level)
+		if best_stars < 3:
 			var limits: Array = GameState.LEVELS[GameState.current_level].stars
-			subtitle += "\n" + tr("NEXT_STAR_FMT") % limits[2 - stars]
+			subtitle += "\n" + tr("NEXT_STAR_FMT") % limits[2 - best_stars]
 		var buttons := []
 		if GameState.has_next_level():
 			buttons.append([tr("NEXT_LEVEL"), func() -> void: GameState.play(GameState.current_level + 1)])

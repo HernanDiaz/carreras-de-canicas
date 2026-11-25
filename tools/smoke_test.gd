@@ -89,7 +89,7 @@ func _check_endings() -> void:
 		add_child(game)
 		while game.state != game.State.PLAYING:
 			await get_tree().physics_frame
-		game.elapsed = 40.0 if attempt == "primera" else 55.0
+		game.elapsed = 30.0 if attempt == "primera" else 55.0
 		game._finish(attempt != "tiempo")
 		for _i in 120:  # el panel aparece a los 1.2-1.4 s
 			await get_tree().process_frame
@@ -97,15 +97,19 @@ func _check_endings() -> void:
 			_failures.append("final (%s): no aparece el panel" % attempt)
 		else:
 			var text := _texts(game._overlay)
-			var record := tr("RECORD_FMT") % 40.0
+			var record := tr("RECORD_FMT") % 30.0
 			match attempt:
 				"primera":
-					_expect_end(gs.best_times.get(0) == 40.0, attempt, "no guarda el récord")
+					_expect_end(gs.best_times.get(0) == 30.0, attempt, "no guarda el récord")
 					_expect_end(tr("NEXT_LEVEL") in text and tr("RETRY") in text, attempt, "faltan botones: " + str(text))
 				"sin récord":
-					_expect_end(gs.best_times.get(0) == 40.0, attempt, "un tiempo peor no debe ser récord")
-					_expect_end(text.any(func(t: String) -> bool: return record in t and "+15.00" in t), attempt,
+					_expect_end(gs.best_times.get(0) == 30.0, attempt, "un tiempo peor no debe ser récord")
+					_expect_end(text.any(func(t: String) -> bool: return record in t and "+25.00" in t), attempt,
 						"falta el récord con la diferencia: " + str(text))
+					# Con 30 s ya tienes 2 estrellas: la siguiente es la 3.ª (menos de 25 s), no la 2.ª.
+					var hint := tr("NEXT_STAR_FMT") % 25.0
+					_expect_end(text.any(func(t: String) -> bool: return hint in t), attempt,
+						"la siguiente estrella debe contar desde tu mejor marca: " + str(text))
 				"tiempo":
 					_expect_end(tr("NEXT_LEVEL") in text, attempt, "falta Siguiente nivel (ya desbloqueado)")
 		game.queue_free()
