@@ -17,6 +17,7 @@ func _ready() -> void:
 	GameState.show_ghost = false
 	_check_cloud_merge()
 	_check_ghost()
+	_check_camera_lead()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -168,6 +169,27 @@ func _check_ghost() -> void:
 	DirAccess.remove_absolute(GameState._ghost_path(TEST_INDEX))
 	if loaded != recorder.samples:
 		_failures.append("fantasma: lo leído del disco no coincide con lo guardado")
+	body.free()
+
+
+## Cámara: centrada con la canica parada o congelada; se adelanta hacia donde rueda, con tope.
+func _check_camera_lead() -> void:
+	var camera := MarbleCamera.new()
+	var body := RigidBody3D.new()
+	camera.target = body
+	if camera._lead() != Vector3.ZERO:
+		_failures.append("cámara: se adelanta con la canica parada")
+	body.linear_velocity = Vector3(4, -9, 0)
+	var lead := camera._lead()
+	if not lead.is_equal_approx(Vector3(4 * camera.lead_time, 0, 0)):
+		_failures.append("cámara: adelanto incorrecto (%s); no debe contar la velocidad vertical" % lead)
+	body.linear_velocity = Vector3(0, 0, -100)
+	if camera._lead().length() > camera.max_lead + 0.001:
+		_failures.append("cámara: el adelanto pasa del máximo")
+	body.freeze = true
+	if camera._lead() != Vector3.ZERO:
+		_failures.append("cámara: se adelanta con la canica congelada (salida, meta)")
+	camera.free()
 	body.free()
 
 
