@@ -112,6 +112,13 @@ func _check_endings() -> void:
 		if has_label != (attempt != "primera"):
 			_failures.append("final (%s): etiqueta de récord en el HUD = %s" % [attempt, has_label])
 		game.elapsed = 30.0 if attempt == "primera" else 55.0
+		if attempt == "tiempo":
+			# Fantasma de 100 s que avanza 1 m por muestra: debe seguir moviéndose tras el final.
+			var samples := PackedFloat32Array()
+			for i in 2001:
+				samples.append_array([float(i), 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0])
+			game._ghost = Ghost.from_samples(samples, SphereMesh.new())
+			game.add_child(game._ghost)
 		game._finish(attempt != "tiempo")
 		for _i in 120:  # el panel aparece a los 1.2-1.4 s
 			await get_tree().process_frame
@@ -133,6 +140,8 @@ func _check_endings() -> void:
 					_expect_end(text.any(func(t: String) -> bool: return hint in t), attempt,
 						"la siguiente estrella debe contar desde tu mejor marca: " + str(text))
 				"tiempo":
+					var ghost_x: float = game._ghost.position.x
+					_expect_end(ghost_x > 55.0 * Ghost.RATE + 10.0, attempt, "el fantasma se queda congelado (x = %s)" % ghost_x)
 					_expect_end(tr("NEXT_LEVEL") in text, attempt, "falta Siguiente nivel (ya desbloqueado)")
 					# Igual que en la pausa: recuerda lo que hay que batir.
 					var goal := tr("NEXT_STAR_FMT") % 25.0

@@ -43,6 +43,7 @@ var _watch_label: Label
 var _standings_label: Label
 ## Fantasma de tu mejor vuelta (solo en partida de un jugador) y grabación de la vuelta actual.
 var _ghost: Ghost
+var _ghost_after := 0.0
 var _recorder := Ghost.Recorder.new()
 ## Sonido de rodar (bucle cuyo volumen y tono siguen a la velocidad).
 var _roll_sound: AudioStreamPlayer
@@ -179,6 +180,10 @@ func _process(delta: float) -> void:
 
 	_update_roll_sound(delta)
 	_update_time_label()
+	if state == State.ENDED and _ghost != null:
+		# Al terminar, el fantasma sigue su vuelta hasta la meta en vez de quedarse congelado.
+		_ghost_after += delta
+		_ghost.seek(elapsed + _ghost_after)
 	if debug_label.visible:
 		debug_label.text = marble.debug_text()
 
