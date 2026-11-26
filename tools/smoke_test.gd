@@ -366,7 +366,7 @@ func _check_bad_options() -> void:
 	var gs := GameState
 	var fields := ["unlocked", "best_times", "achievements", "resets", "review_stage", "tilt_degrees",
 		"tilt_custom", "invert_x", "invert_y", "show_debug", "show_ghost", "music_on", "sound_on",
-		"vibration_on", "player_name", "language"]
+		"vibration_on", "player_name", "language", "last_ip"]
 	var saved := {}
 	for f in fields:
 		var v: Variant = gs.get(f)
@@ -381,9 +381,14 @@ func _check_bad_options() -> void:
 	cfg.set_value("opciones", "nombre", 42)
 	cfg.set_value("opciones", "idioma", "klingon")
 	cfg.set_value("opciones", "invertir_x", true)
+	cfg.set_value("opciones", "ultima_ip", "999.1.2.3")
 	gs._apply_config(cfg)
-	var got := [gs.unlocked, gs.achievements, gs.tilt_degrees, gs.music_on, gs.player_name, gs.language, gs.invert_x]
-	var want := [1, ["first_win"], 35.0, true, "Ana", "", true]
+	var got := [gs.unlocked, gs.achievements, gs.tilt_degrees, gs.music_on, gs.player_name, gs.language, gs.invert_x, gs.last_ip]
+	var want := [1, ["first_win"], 35.0, true, "Ana", "", true, ""]
+	cfg.set_value("opciones", "ultima_ip", "192.168.1.20")
+	gs._apply_config(cfg)
+	if gs.last_ip != "192.168.1.20":
+		_failures.append("opciones: la última IP buena no se carga (%s)" % gs.last_ip)
 	if str(got) != str(want):
 		_failures.append("opciones dañadas: se cargan %s (debe %s)" % [got, want])
 	for f in fields:

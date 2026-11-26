@@ -403,7 +403,7 @@ func _build_multi() -> Control:
 
 	var ip_row := HBoxContainer.new()
 	ip_row.add_theme_constant_override("separation", 16)
-	_ip_edit = _line_edit("", tr("HOST_IP"))
+	_ip_edit = _line_edit(GameState.last_ip, tr("HOST_IP"))
 	ip_row.add_child(_ip_edit)
 	# Intro en el PC o "Hecho" en el teclado del móvil: igual que pulsar el botón.
 	_ip_edit.text_submitted.connect(func(text: String) -> void: _join(text.strip_edges()))
@@ -448,6 +448,7 @@ func _join(ip: String) -> void:
 	if not ip.is_valid_ip_address():
 		_net_status.text = tr("INVALID_IP")
 		return
+	GameState.last_ip = ip
 	GameState.save_data()
 	if Net.join(ip, _player_name()) != OK:
 		_net_status.text = tr("CONNECT_FAILED")

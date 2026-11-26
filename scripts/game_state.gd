@@ -59,6 +59,8 @@ var music_on := true
 var sound_on := true
 var vibration_on := true
 var player_name := ""
+## IP de la última partida por Wi-Fi a la que te uniste (se rellena sola la próxima vez).
+var last_ip := ""
 ## Idioma elegido a mano ("" = automático, el del sistema).
 var language := ""
 
@@ -301,6 +303,7 @@ func save_data() -> void:
 	cfg.set_value("opciones", "sonidos", sound_on)
 	cfg.set_value("opciones", "vibracion", vibration_on)
 	cfg.set_value("opciones", "nombre", player_name)
+	cfg.set_value("opciones", "ultima_ip", last_ip)
 	cfg.set_value("opciones", "idioma", language)
 	cfg.save(SAVE_PATH)
 
@@ -333,6 +336,9 @@ func _apply_config(cfg: ConfigFile) -> void:
 	sound_on = _value(cfg, "opciones", "sonidos", sound_on)
 	vibration_on = _value(cfg, "opciones", "vibracion", vibration_on)
 	player_name = _value(cfg, "opciones", "nombre", player_name)
+	last_ip = _value(cfg, "opciones", "ultima_ip", "")
+	if not last_ip.is_valid_ip_address():
+		last_ip = ""
 	language = _value(cfg, "opciones", "idioma", language)
 	if language not in LANGUAGES:
 		language = ""

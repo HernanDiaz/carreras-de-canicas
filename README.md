@@ -197,7 +197,7 @@ De 2 a 4 jugadores, cada uno con su móvil, conectados a **la misma Wi‑Fi**.
 
 1. Menú → **Carrera Wi‑Fi**. Escribe tu nombre.
 2. Uno pulsa **Crear partida** y queda como anfitrión.
-3. Los demás verán **"Unirse a …"** en la lista. Si no aparece (algunas redes bloquean la búsqueda), se puede usar **Unirse por IP** con la IP que muestra la sala del anfitrión.
+3. Los demás verán **"Unirse a …"** en la lista. Si no aparece (algunas redes bloquean la búsqueda), se puede usar **Unirse por IP** con la IP que muestra la sala del anfitrión (Intro también vale; la última IP usada queda escrita para la próxima vez).
 4. El anfitrión elige el nivel con **< >** y pulsa **¡Empezar carrera!**.
 5. Gana quien antes aguante 3 s en la meta.
 6. Cuando terminas, pasas a **modo espectador**: la cámara sigue a quien sigue corriendo, cambias de jugador con **< >** (o las flechas en el PC) y ves la clasificación en directo.
