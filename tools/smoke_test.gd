@@ -357,6 +357,8 @@ func _check_respawn_protection() -> void:
 	for _i in int(Marble.RESPAWN_PROTECTION * 60.0) + 5:
 		marble._protection = maxf(marble._protection - 1.0 / 60.0, 0.0)
 	var after := chaser._nearest_target()
+	if absf(Marble.blink_loops() * Marble.BLINK_STEP * 2.0 - Marble.RESPAWN_PROTECTION) > Marble.BLINK_STEP * 2.0:
+		_failures.append("el parpadeo al reaparecer (%d ciclos) no dura lo que la protección" % Marble.blink_loops())
 	if before == Vector3.INF or protected != Vector3.INF or after == Vector3.INF:
 		_failures.append("protección al reaparecer: antes %s, recién reaparecida %s, después %s" % [before, protected, after])
 	marble.free()

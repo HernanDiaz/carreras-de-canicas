@@ -87,16 +87,20 @@ func respawn(pos: Vector3) -> void:
 	_blink()
 
 
-## Parpadeo corto al reaparecer, para encontrar la canica de un vistazo.
+## Parpadeo al reaparecer, para encontrar la canica de un vistazo. Dura lo mismo que la
+## protección (RESPAWN_PROTECTION): mientras parpadea, nadie te persigue.
+const BLINK_STEP := 0.08
+
+
 func _blink() -> void:
 	var mesh: Node3D = get_node_or_null("Mesh")
 	if mesh == null:
 		return
 	if _blink_tween != null and _blink_tween.is_valid():
 		_blink_tween.kill()
-	_blink_tween = create_tween().set_loops(4)
-	_blink_tween.tween_callback(mesh.hide).set_delay(0.08)
-	_blink_tween.tween_callback(mesh.show).set_delay(0.08)
+	_blink_tween = create_tween().set_loops(blink_loops())
+	_blink_tween.tween_callback(mesh.hide).set_delay(BLINK_STEP)
+	_blink_tween.tween_callback(mesh.show).set_delay(BLINK_STEP)
 
 
 ## Devuelve la canica a la física y activa los controles (inicio de partida).
@@ -152,6 +156,10 @@ static func shape_tilt(v: Vector2, dead: float, exponent: float) -> Vector2:
 		return Vector2.ZERO
 	var t := minf((amount - dead) / (1.0 - dead), 1.0)
 	return v / amount * pow(t, exponent)
+
+
+static func blink_loops() -> int:
+	return maxi(roundi(RESPAWN_PROTECTION / (BLINK_STEP * 2.0)), 1)
 
 
 ## Recién reaparecida: los enemigos no la persiguen todavía.
