@@ -465,6 +465,9 @@ func _check_coaster_routes() -> void:
 	marble.camera = camera
 	marble.release()
 	var goal := level.goal_center
+	var marks := level.find_children("*", "MeshInstance3D", true, false).filter(func(n: Node) -> bool: return n.has_meta("catapult_target"))
+	if marks.size() != 1 or (marks[0] as Node3D).position.distance_to(Vector3(0, -8.95, -86)) > 0.01:
+		_failures.append("catapulta: la diana del aterrizaje no está donde cae (%s)" % [marks])
 	# [nombre, salida, acción, segundos, comprobación]
 	var routes := [
 		["tobogán, trampolín y catapulta", Vector3(0, 1, -7), "ui_up", 12.0,

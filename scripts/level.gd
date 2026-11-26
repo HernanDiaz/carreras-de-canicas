@@ -433,6 +433,16 @@ func add_catapult(floor_pos: Vector3, target: Vector3, flight_time := 1.4, width
 	lip.size = Vector3(width - 0.2, 0.35, 0.12)
 	lip.material = _material(C_CATAPULT.darkened(0.2), 0.5)
 	_add_mesh(hinge, lip, Vector3(0, 0.15, 2.35))
+	# Diana en el sitio donde vas a caer, para ver adónde lanza antes de pisarla.
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.9
+	ring.outer_radius = 1.1
+	ring.rings = 24
+	ring.material = _material(C_CATAPULT, 2.0)
+	var mark := _add_mesh(self, ring, target + Vector3(0, 0.05, 0))
+	mark.scale = Vector3(1, 0.3, 1)
+	mark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mark.set_meta("catapult_target", true)
 
 	var area := _add_area(floor_pos + Vector3(0, 0.6, 0), (Basis.looking_at(dir) * Vector3(width, 1.2, 2.4)).abs())
 	var state := {fired = -10.0, last_t = 0.0, flying = false, from = Vector3.ZERO, velocity = Vector3.ZERO, gravity = Vector3.ZERO}
@@ -467,6 +477,8 @@ func add_catapult(floor_pos: Vector3, target: Vector3, flight_time := 1.4, width
 		elif since < 1.0:
 			swing = 1.0 - (since - 0.12) / 0.88
 		hinge.basis = Basis.looking_at(dir) * Basis(Vector3.RIGHT, deg_to_rad(-70.0) * swing)
+		var pulse := 1.0 + 0.12 * sin(t * 5.0)
+		mark.scale = Vector3(pulse, 0.3, pulse)
 	)
 
 
