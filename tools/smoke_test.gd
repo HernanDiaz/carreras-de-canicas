@@ -500,6 +500,18 @@ func _check_level(index: int) -> void:
 				if need.x > 1280.0 or need.y > 400.0:
 					_failures.append("aviso (%s) mide %s y no cabe: %s" % [locale, need, text.replace("
 ", " / ")])
+			# Cabecera ("Nivel N / nombre") y botón de calibrar: ninguno pisa el contador.
+			for i in GameState.LEVELS.size():
+				game.level_label.text = tr("HUD_LEVEL_FMT") % [i + 1, tr(GameState.LEVELS[i].name)]
+				var w: float = game.level_label.get_minimum_size().x
+				if game.level_label.offset_left + w > 640.0 - 120.0:
+					_failures.append("cabecera (%s) nivel %d mide %.0f px y pisa el contador" % [locale, i + 1, w])
+			for key in ["RECALIBRATE", "CALIBRATED"]:
+				game.calibrate_button.text = tr(key)
+				var bw: float = game.calibrate_button.get_minimum_size().x
+				# Crece hacia la izquierda: basta con que no llegue al contador.
+				if 1280.0 + game.calibrate_button.offset_right - bw < 640.0 + 120.0:
+					_failures.append("botón calibrar (%s) mide %.0f px y pisa el contador" % [locale, bw])
 		GameState.apply_language()
 		label.visible = false
 		var time_before: float = game.time_left
