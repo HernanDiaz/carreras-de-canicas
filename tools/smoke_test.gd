@@ -146,6 +146,19 @@ func _check_menu_fits() -> void:
 				path.append(menu._current)
 			if path != ["levels", "main", "main"]:
 				_failures.append("menú: Esc va por %s (debe levels, main, main)" % [path])
+			# Teclas 1-9 en Elegir nivel: solo niveles desbloqueados, sin eco ni otras teclas.
+			var saved_unlocked := GameState.unlocked
+			GameState.unlocked = 2
+			var got := []
+			for c in [[KEY_1, false], [KEY_2, false], [KEY_3, false], [KEY_KP_2, false], [KEY_1, true], [KEY_A, false]]:
+				var k := InputEventKey.new()
+				k.physical_keycode = c[0]
+				k.pressed = true
+				k.echo = c[1]
+				got.append(menu._level_for_key(k))
+			GameState.unlocked = saved_unlocked
+			if got != [0, 1, -1, 1, -1, -1]:
+				_failures.append("menú: teclas de nivel dan %s (debe [0, 1, -1, 1, -1, -1])" % [got])
 			# Intro en el campo de IP intenta unirse (con una IP mala solo avisa; no conecta).
 			menu._net_status.text = ""
 			menu._ip_edit.text_submitted.emit(" no es una ip ")

@@ -103,6 +103,26 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel") and _current != "main":
 		get_viewport().set_input_as_handled()
 		_go_back()
+	elif _current == "levels" and _level_for_key(event) >= 0:
+		get_viewport().set_input_as_handled()
+		GameState.play(_level_for_key(event))
+
+
+## En Elegir nivel, las teclas 1-9 (también las del teclado numérico) abren ese nivel si está
+## desbloqueado. Devuelve el índice, o -1.
+func _level_for_key(event: InputEvent) -> int:
+	var key := event as InputEventKey
+	if key == null or not key.pressed or key.echo:
+		return -1
+	var code := key.physical_keycode
+	var index := -1
+	if code >= KEY_1 and code <= KEY_9:
+		index = code - KEY_1
+	elif code >= KEY_KP_1 and code <= KEY_KP_9:
+		index = code - KEY_KP_1
+	if index < 0 or index >= GameState.LEVELS.size() or not GameState.is_unlocked(index):
+		return -1
+	return index
 
 
 func _go_back() -> void:
