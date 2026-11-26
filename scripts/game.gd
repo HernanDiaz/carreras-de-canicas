@@ -176,7 +176,7 @@ func _process(delta: float) -> void:
 			if not _fall_sounded and marble.global_position.y < level.lowest_y - 1.5:
 				_fall_sounded = true
 				Audio.play("fall")
-			if time_left == 0.0:
+			if _time_up():
 				marble.stop_in_place()
 				_finish(false)
 			elif marble.global_position.y < level.lowest_y - FALL_MARGIN:
@@ -319,6 +319,15 @@ func _update_goal(delta: float) -> void:
 		_last_goal_tick = -1
 		_show_message(tr("BACK_TO_GOAL"), 1.0)
 	level.set_goal_progress(_goal_hold / GOAL_HOLD_TIME)
+
+
+## Se acaba el tiempo... salvo que estés en la meta aguantando: entonces la cuenta de la meta
+## termina (como un "tiempo de descuento"). Si sales de la meta, se acabó.
+func _time_up() -> bool:
+	if time_left > 0.0:
+		return false
+	var holding := level.marble_on_goal or (_goal_hold > 0.0 and _off_goal < GOAL_GRACE)
+	return not holding
 
 
 ## Récord del nivel en pequeño bajo el contador: lo que hay que batir, sin tener que pausar.

@@ -681,6 +681,23 @@ func _check_level(index: int) -> void:
 		game._update_goal(0.2)
 		if not is_equal_approx(kept, 1.0) or game._goal_hold != 0.0:
 			_failures.append("meta: tras un bote queda %s (debe 1.0) y al salir %s (debe 0)" % [kept, game._goal_hold])
+		# Tiempo agotado aguantando en la meta: la cuenta de la meta termina; fuera, se acabó.
+		var time_saved: float = game.time_left
+		game.time_left = 0.0
+		var up := []
+		for c in [[false, 0.0, 0.0], [true, 0.0, 0.0], [false, 1.0, 0.1], [false, 1.0, 0.3]]:
+			game.level.marble_on_goal = c[0]
+			game._goal_hold = c[1]
+			game._off_goal = c[2]
+			up.append(game._time_up())
+		game.time_left = 5.0
+		up.append(game._time_up())
+		if up != [true, false, false, true, false]:
+			_failures.append("tiempo agotado en la meta: %s (debe [true, false, false, true, false])" % [up])
+		game.level.marble_on_goal = false
+		game._goal_hold = 0.0
+		game._off_goal = 0.0
+		game.time_left = time_saved
 		# R reinicia al momento, pero no si se mantiene pulsada (eco), con otra tecla ni en carrera.
 		var key := InputEventKey.new()
 		key.physical_keycode = KEY_R
