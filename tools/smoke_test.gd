@@ -27,6 +27,7 @@ func _ready() -> void:
 	_check_voices()
 	_check_rumble()
 	_check_beacon()
+	_check_net_state()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -287,6 +288,17 @@ func _check_beacon() -> void:
 			Net.DISCOVERY_TAG + "|Luis|0", Net.DISCOVERY_TAG + "|Luis|99"]:
 		if not Net.parse_beacon(bad).is_empty():
 			_failures.append("anuncio de sala raro aceptado: %s" % bad)
+
+
+## Estados de canica por red: los normales pasan; NaN, infinitos o rotación nula no.
+func _check_net_state() -> void:
+	var q := Quaternion.IDENTITY
+	if not Net.state_ok(Vector3(1, 2, 3), Vector3.ZERO, q):
+		_failures.append("red: un estado normal se descarta")
+	for bad in [[Vector3(NAN, 0, 0), Vector3.ZERO, q], [Vector3.ZERO, Vector3(0, INF, 0), q],
+			[Vector3.ZERO, Vector3.ZERO, Quaternion(0, 0, 0, 0)], [Vector3.ZERO, Vector3.ZERO, Quaternion(NAN, 0, 0, 1)]]:
+		if Net.state_ok(bad[0], bad[1], bad[2]):
+			_failures.append("red: estado raro aceptado %s" % [bad])
 
 
 func _check_voices() -> void:

@@ -556,13 +556,17 @@ func _add_remote(id: int) -> void:
 
 
 func _on_remote_state(id: int, pos: Vector3, vel: Vector3, rot: Quaternion) -> void:
-	if _remotes.has(id):
-		_remotes[id].push_state(pos, vel, rot)
+	if _remotes.has(id) and Net.state_ok(pos, vel, rot):
+		_remotes[id].push_state(pos, vel, rot.normalized())
 
 
 func _on_chasers_state(states: Array) -> void:
 	for i in mini(states.size(), level.chasers.size()):
-		level.chasers[i].push_state(states[i][0], states[i][1], states[i][2])
+		var s: Variant = states[i]
+		if not (s is Array and s.size() == 3 and s[0] is Vector3 and s[1] is Vector3 and s[2] is Quaternion):
+			continue
+		if Net.state_ok(s[0], s[1], s[2]):
+			level.chasers[i].push_state(s[0], s[1], (s[2] as Quaternion).normalized())
 
 
 func _on_players_changed() -> void:

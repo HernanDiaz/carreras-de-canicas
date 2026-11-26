@@ -325,6 +325,12 @@ func _begin_countdown() -> void:
 	countdown_begin.emit()
 
 
+## Estado de una canica recibido por red con sentido: números finitos y una rotación válida.
+## Un NaN llegaría hasta la física (los choques entre canicas se calculan con él).
+static func state_ok(pos: Vector3, vel: Vector3, rot: Quaternion) -> bool:
+	return pos.is_finite() and vel.is_finite() and rot.is_finite() and rot.length_squared() > 0.0001
+
+
 func send_state(pos: Vector3, vel: Vector3, rot: Quaternion) -> void:
 	_state.rpc(pos, vel, rot)
 
