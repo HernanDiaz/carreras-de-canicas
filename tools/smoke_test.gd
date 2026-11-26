@@ -512,6 +512,18 @@ func _check_level(index: int) -> void:
 				# Crece hacia la izquierda: basta con que no llegue al contador.
 				if 1280.0 + game.calibrate_button.offset_right - bw < 640.0 + 120.0:
 					_failures.append("botón calibrar (%s) mide %.0f px y pisa el contador" % [locale, bw])
+		# Modo espectador (carrera): la barra "< Viendo a ... >" con un nombre largo cabe.
+		game._build_spectator_hud()
+		var bar: Control = game._spectator_hud[0]
+		for locale in TranslationServer.get_loaded_locales():
+			TranslationServer.set_locale(locale)
+			game._watch_label.text = tr("WATCHING_FMT") % ["WWWWWWWWWWWWWWWW", "  " + tr("AT_GOAL")]
+			var bw: float = bar.get_combined_minimum_size().x
+			if bw > 1280.0:
+				_failures.append("barra de espectador (%s) mide %.0f px y no cabe" % [locale, bw])
+		for node in game._spectator_hud:
+			node.queue_free()
+		game._spectator_hud.clear()
 		GameState.apply_language()
 		label.visible = false
 		var time_before: float = game.time_left
