@@ -135,6 +135,16 @@ func join(ip: String, player_name: String) -> Error:
 	return OK
 
 
+## Un nivel que este móvil no tiene (el anfitrión tiene una versión con más niveles) haría
+## fallar el juego al enseñarlo o cargarlo: mejor salir de la sala y decir por qué.
+func _level_known(level: int) -> bool:
+	if level >= 0 and level < GameState.LEVELS.size():
+		return true
+	leave()
+	left.emit("NET_VERSION_MISMATCH")
+	return false
+
+
 func leave() -> void:
 	if is_online():
 		multiplayer.multiplayer_peer.close()
@@ -206,6 +216,8 @@ func _sync_to_all() -> void:
 
 @rpc("authority", "reliable")
 func _sync_players(new_players: Dictionary, new_level: int) -> void:
+	if not _level_known(new_level):
+		return
 	players = new_players
 	level_index = new_level
 	players_changed.emit()
@@ -293,6 +305,8 @@ func start_race() -> void:
 
 @rpc("authority", "call_local", "reliable")
 func _start_race(level: int) -> void:
+	if not _level_known(level):
+		return
 	level_index = level
 	in_race = true
 	standings.clear()

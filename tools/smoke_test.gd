@@ -28,6 +28,7 @@ func _ready() -> void:
 	_check_rumble()
 	_check_beacon()
 	_check_net_state()
+	_check_unknown_level()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -112,6 +113,8 @@ func _check_menu_fits() -> void:
 		menu._achievements_button.visible = true
 		menu._continue_button.visible = true
 		menu._continue_button.text = tr("CONTINUE_FMT") % 9
+		# El aviso más largo de la pantalla de Wi-Fi.
+		menu._net_status.text = tr("NET_VERSION_MISMATCH")
 		# Elegir nivel con dos estados: todo bloqueado/sin superar, y todo con récord.
 		var saved := [GameState.best_times.duplicate(), GameState.unlocked]
 		for full in [false, true]:
@@ -304,6 +307,22 @@ func _check_net_state() -> void:
 			[Vector3.ZERO, Vector3.ZERO, Quaternion(0, 0, 0, 0)], [Vector3.ZERO, Vector3.ZERO, Quaternion(NAN, 0, 0, 1)]]:
 		if Net.state_ok(bad[0], bad[1], bad[2]):
 			_failures.append("red: estado raro aceptado %s" % [bad])
+
+
+## Anfitrión con una versión con más niveles: no se carga un nivel que no existe; se sale
+## de la sala avisando.
+func _check_unknown_level() -> void:
+	var reasons := []
+	var on_left := func(reason: String) -> void: reasons.append(reason)
+	Net.left.connect(on_left)
+	var level := GameState.current_level
+	Net._sync_players({}, GameState.LEVELS.size())
+	Net._start_race(-1)
+	Net.left.disconnect(on_left)
+	if reasons != ["NET_VERSION_MISMATCH", "NET_VERSION_MISMATCH"]:
+		_failures.append("red: nivel desconocido da %s" % [reasons])
+	if GameState.current_level != level or Net.in_race:
+		_failures.append("red: se intenta cargar un nivel que no existe")
 
 
 func _check_voices() -> void:
