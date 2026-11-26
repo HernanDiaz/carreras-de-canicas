@@ -103,7 +103,7 @@ Godot 4.7.2 está instalado en `%LOCALAPPDATA%\Programs\Godot`.
   - **Flechas del teclado o WASD**: control directo, sin simular el sensor.
   - **Esc** o el botón **II** pausan la partida.
   - **R** reinicia el nivel al momento (solo en partida individual).
-  - **Mando**: stick izquierdo o cruceta para mover, **Start** pausa y **Select/Back** reinicia.
+  - **Mando**: stick izquierdo (analógico: poco stick, poco empuje) o cruceta para mover, **Start** pausa y **Select/Back** reinicia.
 - **Abrir editor.bat**: abre el proyecto en el editor de Godot. Dentro, **F5** ejecuta el juego.
 
 Si añades scripts nuevos con `class_name`, abre el proyecto una vez con **Abrir editor.bat** antes de usar **Jugar.bat**, para que Godot los registre.
@@ -111,7 +111,7 @@ Si añades scripts nuevos con `class_name`, abre el proyecto una vez con **Abrir
 **Prueba automática de los niveles** (`tools/smoke_test.tscn`): carga cada nivel, espera a la salida y comprueba que la canica se apoya en el suelo y no se cae ni reaparece sola. Además comprueba, sin guardar nada en disco:
 - que los paneles (fin de nivel, tiempo agotado) y todas las pantallas del menú caben en 1280x720 en los 15 idiomas;
 - los finales (récord, diferencia, siguiente estrella, botones, música más baja) y la pausa (al ir al fondo, al desconectar el mando, Esc para volver);
-- el fantasma (grabar, guardar, cargar, descartar archivos rotos), la cámara, el contador, la meta, WASD, R/mando y Esc en el menú;
+- el fantasma (grabar, guardar, cargar, descartar archivos rotos), la cámara, el contador, la meta, WASD, el stick analógico, R/mando y Esc en el menú;
 - que un archivo guardado o de la nube con datos raros no rompe nada, y que «Continuar» sugiere el nivel correcto.
 
 Escribe `SMOKE OK` o lo que falla:

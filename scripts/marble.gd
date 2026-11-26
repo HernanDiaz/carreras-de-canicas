@@ -31,6 +31,8 @@ signal impact(strength: float, landing: bool)
 
 ## Cambio de velocidad mínimo (m/s, sin contar la gravedad) que cuenta como golpe.
 const IMPACT_THRESHOLD := 2.2
+## Zona muerta del stick analógico (los sticks gastados no vuelven del todo al centro).
+const STICK_DEAD_ZONE := 0.15
 
 var camera: Camera3D
 ## Sustituye al sensor en el PC (arrastrar con el ratón).
@@ -234,6 +236,11 @@ func _read_sensor() -> Vector3:
 
 
 func _read_input() -> Vector2:
+	# Stick del mando: analógico, con la misma curva que el sensor.
+	for device in Input.get_connected_joypads():
+		var stick := _stick(device)
+		if stick != Vector2.ZERO:
+			return stick
 	# Teclado para probar en el PC: control directo, sin curva.
 	var keys := Input.get_vector("ui_left", "ui_right", "ui_down", "ui_up")
 	if keys == Vector2.ZERO:
@@ -251,6 +258,13 @@ func _read_input() -> Vector2:
 	if invert_y:
 		v.y = -v.y
 	return shape_tilt(v, dead_zone, response_exponent)
+
+
+## Stick izquierdo de un mando. Las acciones ui_* también lo leen, pero con zona muerta 0.5:
+## media palanca no hacía nada y luego empujaba de golpe.
+func _stick(device: int) -> Vector2:
+	var v := Vector2(Input.get_joy_axis(device, JOY_AXIS_LEFT_X), -Input.get_joy_axis(device, JOY_AXIS_LEFT_Y))
+	return shape_tilt(v.limit_length(1.0), STICK_DEAD_ZONE, response_exponent)
 
 
 ## WASD como alternativa a las flechas. Por posición física de la tecla, así en un teclado

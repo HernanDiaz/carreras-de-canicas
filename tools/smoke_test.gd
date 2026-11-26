@@ -19,6 +19,7 @@ func _ready() -> void:
 	_check_ghost()
 	_check_camera_lead()
 	_check_wasd()
+	_check_stick()
 	_check_bad_save()
 	_check_suggested()
 	_check_bad_options()
@@ -407,6 +408,33 @@ func _check_wasd() -> void:
 		_failures.append("WASD: S da %s" % marble._wasd())
 	_press(KEY_S, false)
 	marble.free()
+
+
+## Stick: media palanca ya mueve (con ui_* no hacía nada), en reposo no, y a fondo da 1.
+func _check_stick() -> void:
+	var marble := Marble.new()
+	var cases := [[Vector2(0, 0), 0.0, 0.0], [Vector2(0.1, 0), 0.0, 0.0], [Vector2(0.4, 0), 0.05, 0.5],
+		[Vector2(1, 0), 0.99, 1.01], [Vector2(0, -1), 0.99, 1.01]]
+	for c in cases:
+		_tilt_stick(c[0])
+		var v: Vector2 = marble._stick(0)
+		if v.length() < c[1] or v.length() > c[2]:
+			_failures.append("stick %s da %s" % [c[0], v])
+	_tilt_stick(Vector2(0, -1))
+	if marble._stick(0).y <= 0.0:
+		_failures.append("stick hacia arriba no va hacia delante: %s" % marble._stick(0))
+	_tilt_stick(Vector2.ZERO)
+	marble.free()
+
+
+func _tilt_stick(v: Vector2) -> void:
+	for axis in [[JOY_AXIS_LEFT_X, v.x], [JOY_AXIS_LEFT_Y, v.y]]:
+		var motion := InputEventJoypadMotion.new()
+		motion.device = 0
+		motion.axis = axis[0]
+		motion.axis_value = axis[1]
+		Input.parse_input_event(motion)
+	Input.flush_buffered_events()
 
 
 func _press(code: Key, pressed: bool) -> void:
