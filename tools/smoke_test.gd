@@ -31,6 +31,7 @@ func _ready() -> void:
 	_check_unknown_level()
 	_check_service_ids()
 	await _check_respawn_protection()
+	await _check_water()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -411,6 +412,36 @@ func _check_respawn_protection() -> void:
 	marble.free()
 	chaser.free()
 	await get_tree().process_frame
+
+
+## Agua: la canica hundida sube y se queda flotando en la superficie, la corriente la
+## arrastra, y fuera del agua no hay fuerza.
+func _check_water() -> void:
+	var g := Vector3(0, -9.8, 0)
+	if Level.water_accel(2.0, 0.0, Vector3.ZERO, Vector3.ZERO, g) != Vector3.ZERO:
+		_failures.append("agua: empuja por encima de la superficie")
+	if Level.water_accel(-2.0, 0.0, Vector3.ZERO, Vector3.ZERO, g).y <= 9.8:
+		_failures.append("agua: hundida del todo no flota")
+	var level := Level.new()
+	add_child(level)
+	var floor_body := level.add_block(Vector3(0, -4, 0), Vector3(14, 1, 14), Level.S_FLOOR)
+	var marble: Marble = load("res://scenes/marble.tscn").instantiate()
+	level.marble = marble
+	level.add_water(Vector3.ZERO, Vector3(14, 4, 14), Vector3(2, 0, 0))
+	add_child(marble)
+	marble.global_position = Vector3(-4, -2.5, 0)
+	for _i in 240:
+		await get_tree().physics_frame
+	var pos := marble.global_position
+	if pos.y < -0.6 or pos.y > 0.5:
+		_failures.append("agua: la canica no se queda en la superficie (y = %.2f)" % pos.y)
+	if pos.x < -1.0:
+		_failures.append("agua: la corriente no arrastra (x = %.2f)" % pos.x)
+	if not marble.in_water():
+		_failures.append("agua: la canica no sabe que está en el agua")
+	marble.free()
+	level.free()
+	floor_body = null
 
 
 func _check_voices() -> void:

@@ -89,7 +89,7 @@ Superar un nivel desbloquea el siguiente. El progreso y los récords se guardan 
 Piezas disponibles en `Level`:
 - **Pista:** `add_block`, `add_platform` (con punto de control), `add_ramp`, `add_ice_platform`, `make_icy`, `add_moving_platform`, `add_crumble`, `add_trapdoor`, `add_conveyor`, `add_turntable`, `add_seesaw`, `add_tower`.
 - **Terreno:** `add_waves` (baches), `add_valley` (valle en V), `add_chute` y `add_spiral` (toboganes).
-- **Elementos:** `add_bumper`, `add_spinner`, `add_boost`, `add_jump_pad`, `add_acid`, `add_wind`, `add_goal`.
+- **Elementos:** `add_bumper`, `add_spinner`, `add_boost`, `add_jump_pad`, `add_acid`, `add_wind`, `add_water` (flotar y corriente), `add_goal`.
 - **Enemigos:** `add_patroller`, `add_chaser`, `add_piston`, `add_pendulum`, `add_crusher`, `add_barrels`, `add_worm`.
 
 Todas las posiciones de suelo son el centro de la cara superior. Se juega hacia `-z` y hacia `+x`.

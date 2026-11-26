@@ -44,6 +44,12 @@ const C_GOAL_LIGHT := Color(0.3, 1.0, 0.5)
 const C_ACID := Color(0.45, 1.0, 0.2)
 const C_JUMP := Color(1.0, 0.85, 0.2)
 const C_ENEMY := Color(0.6, 0.25, 0.85)
+const C_WATER := Color(0.2, 0.55, 0.95)
+## Flotación en el agua (1 = ni sube ni baja): con 1.7 la canica flota con algo más de la
+## mitad hundida.
+const WATER_BUOYANCY := 1.7
+## Cuánto frena el agua (y cuánto arrastra la corriente).
+const WATER_DRAG := 2.5
 
 ## La asigna game.gd antes de build(); la usan los enemigos que persiguen.
 var marble: Marble
@@ -406,6 +412,76 @@ func add_wind(floor_center: Vector3, size: Vector3, dir: Vector3, strength: floa
 		if gust > 0.0 and marble != null and area.overlaps_body(marble):
 			marble.apply_central_force(dir * strength * gust * marble.mass)
 	)
+
+
+## Agua: estanque con la superficie en `surface` (centro de la cara de arriba) y tamaño `size`
+## (y = profundidad). La canica flota y la corriente `current` (en m/s) la arrastra. No hace
+## reaparecer: se sale nadando (en el agua se controla peor que en el suelo, ver Marble).
+## Hay que rodearlo de bordes o de suelo más alto para que la corriente no te saque del nivel.
+func add_water(surface: Vector3, size: Vector3, current := Vector3.ZERO) -> void:
+	var box := BoxMesh.new()
+	box.size = size
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color(C_WATER, 0.5)
+	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	material.roughness = 0.05
+	material.metallic = 0.3
+	material.emission_enabled = true
+	material.emission = C_WATER
+	material.emission_energy_multiplier = 0.25
+	box.material = material
+	var volume := _add_mesh(self, box, surface - Vector3(0, size.y / 2.0, 0))
+	volume.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	lowest_y = minf(lowest_y, surface.y - size.y)
+
+	if current != Vector3.ZERO:
+		# Espuma que viaja con la corriente, para ver hacia dónde arrastra.
+		var foam := BoxMesh.new()
+		foam.size = Vector3(0.5, 0.02, 0.12)
+		var white := StandardMaterial3D.new()
+		white.albedo_color = Color(1, 1, 1, 0.7)
+		white.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		white.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		foam.material = white
+		var particles := CPUParticles3D.new()
+		particles.mesh = foam
+		particles.amount = clampi(int(size.x * size.z * 0.3), 8, 60)
+		particles.lifetime = 1.6
+		particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
+		particles.emission_box_extents = Vector3(size.x * 0.45, 0.0, size.z * 0.45)
+		particles.direction = current.normalized()
+		particles.spread = 0.0
+		particles.gravity = Vector3.ZERO
+		particles.initial_velocity_min = current.length()
+		particles.initial_velocity_max = current.length()
+		particles.particle_flag_align_y = false
+		particles.position = surface + Vector3(0, 0.03, 0)
+		particles.local_coords = false
+		particles.transform.basis = Basis.looking_at(current.normalized())
+		add_child(particles)
+
+	# La zona sube un poco por encima de la superficie: la canica flota medio fuera.
+	var area := _add_area(surface + Vector3(0, 0.5 - size.y / 2.0, 0), size + Vector3(0, 1.0, 0))
+	_animators.append(func(_t: float) -> void:
+		if marble == null or not area.overlaps_body(marble):
+			return
+		var accel := water_accel(marble.global_position.y, surface.y, marble.linear_velocity, current, marble.get_gravity())
+		if accel != Vector3.ZERO:
+			marble.apply_central_force(accel * marble.mass)
+			marble.enter_water()
+	)
+
+
+## Aceleración que da el agua a una canica (radio 0,5) con el centro a altura `y`: flotación
+## según lo hundida que esté y un arrastre que la lleva a la velocidad de la corriente.
+static func water_accel(y: float, surface_y: float, velocity: Vector3, current: Vector3, gravity: Vector3) -> Vector3:
+	var submerged := clampf(surface_y - (y - 0.5), 0.0, 1.0)
+	if submerged == 0.0:
+		return Vector3.ZERO
+	var relative := current - velocity
+	# El vaivén vertical se frena más, para que no se quede botando.
+	relative.y *= 1.5
+	return -gravity * WATER_BUOYANCY * submerged + relative * WATER_DRAG * submerged
 
 
 ## Balancín: tablón (centro de su cara superior `top`, tamaño `size`) que se inclina hacia un

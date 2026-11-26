@@ -7,6 +7,8 @@ extends RigidBody3D
 @export var air_control := 0.3
 ## Fracción de control sobre hielo.
 @export var ice_control := 0.3
+## Fracción de control flotando en el agua.
+@export var water_control := 0.55
 ## Fuerza con la que la canica acompaña a una plataforma móvil.
 @export var platform_grip := 12.0
 ## Grados de inclinación respecto a la posición calibrada para empuje máximo.
@@ -60,6 +62,8 @@ var _last_velocity := Vector3.ZERO
 var _impact_mute := 0
 var _impact_cooldown := 0.0
 var _protection := 0.0
+## Pasos de física que quedan "en el agua" (el nivel lo renueva mientras flota).
+var _water_steps := 0
 ## Consulta de suelo reutilizada (se hace en cada paso de física).
 var _ground_query := PhysicsRayQueryParameters3D.new()
 
@@ -162,6 +166,15 @@ static func blink_loops() -> int:
 	return maxi(roundi(RESPAWN_PROTECTION / (BLINK_STEP * 2.0)), 1)
 
 
+## El agua (Level.add_water) avisa en cada paso mientras la canica está dentro.
+func enter_water() -> void:
+	_water_steps = 2
+
+
+func in_water() -> bool:
+	return _water_steps > 0
+
+
 ## Recién reaparecida: los enemigos no la persiguen todavía.
 func is_protected() -> bool:
 	return _protection > 0.0
@@ -173,6 +186,7 @@ func is_grounded() -> bool:
 
 func _physics_process(delta: float) -> void:
 	_protection = maxf(_protection - delta, 0.0)
+	_water_steps = maxi(_water_steps - 1, 0)
 	_update_sensor(delta)
 	_grounded = _check_grounded()
 	_detect_impact(delta)
@@ -306,6 +320,8 @@ func _to_screen_axes(v: Vector2) -> Vector2:
 
 
 func _control_factor() -> float:
+	if in_water():
+		return water_control
 	if not _grounded:
 		return air_control
 	return ice_control if _on_ice else 1.0
