@@ -317,8 +317,18 @@ func _paged(grid: GridContainer) -> VBoxContainer:
 	row.add_child(grid)
 	row.add_child(next)
 	column.add_child(row)
-	var dots := UI.label("", 26, UI.C_MUTED)
+	# Fondo oscuro detrás de los puntos: sin él se pierden sobre el suelo claro del decorado.
+	var dots := UI.label("", 26, UI.C_ACCENT)
 	dots.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dots.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var pill := StyleBoxFlat.new()
+	pill.bg_color = UI.C_PANEL
+	pill.set_corner_radius_all(14)
+	pill.content_margin_left = 14
+	pill.content_margin_right = 14
+	pill.content_margin_top = 0
+	pill.content_margin_bottom = 2
+	dots.add_theme_stylebox_override("normal", pill)
 	column.add_child(dots)
 	_pagers.append({prev = prev, next = next, dots = dots})
 	return column
