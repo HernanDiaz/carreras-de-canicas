@@ -142,6 +142,14 @@ También puedes copiar `build/CarrerasDeCanicas.apk` al móvil e instalarlo a ma
 
 El botón "atrás" de Android pausa la partida y, en el menú, vuelve a la pantalla anterior.
 
+**Qué mirar en el móvil** (la prueba automática no lo puede comprobar en el PC):
+- La cámara se adelanta hacia donde ruedas (`lead_time` / `max_lead` en `scripts/camera.gd`): ¿ayuda o marea?
+- La meta perdona botes cortos (`GOAL_GRACE` en `scripts/game.gd`) y vibra suave cada segundo de la cuenta de 3.
+- En el nivel 1, la primera vez, sale «inclina el móvil…» y se lee entero.
+- Sonidos: los 3 últimos segundos suenan más agudos; la música baja en la pausa y al terminar.
+- La canica parpadea al reaparecer y el récord bajo el contador se apaga al pasarlo.
+- Con pantallas de 90/120 Hz el juego va a 60 imágenes por segundo: debe verse igual de suave y gastar menos.
+
 ## iPhone / iPad (TestFlight, sin Mac)
 
 El juego se compila para iOS en un Mac de GitHub (GitHub Actions) y se sube a **TestFlight**; desde ahí se instala en el iPhone. Para configurarlo (solo la primera vez):
