@@ -25,6 +25,7 @@ func _ready() -> void:
 	_check_bad_options()
 	_check_bad_ghost()
 	_check_voices()
+	_check_rumble()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -262,6 +263,18 @@ func _check_ghost() -> void:
 
 
 ## Sonidos: se usan voces libres antes de cortar uno que suena (la fanfarria no se corta).
+## Mando: la vibración llega con la fuerza pedida (media si no se dice) y con la duración bien.
+func _check_rumble() -> void:
+	for c in [[-1.0, Vector2(0.5, 0.25)], [0.4, Vector2(0.4, 0.2)], [3.0, Vector2(1.0, 0.5)]]:
+		Audio.rumble(0, 120, c[0])
+		var got := Input.get_joy_vibration_strength(0)
+		if not got.is_equal_approx(c[1]):
+			_failures.append("vibración del mando con amplitud %s: %s" % [c[0], got])
+		if not is_equal_approx(Input.get_joy_vibration_duration(0), 0.12):
+			_failures.append("vibración del mando dura %s" % Input.get_joy_vibration_duration(0))
+	Input.stop_joy_vibration(0)
+
+
 func _check_voices() -> void:
 	var sound_was: bool = GameState.sound_on
 	GameState.sound_on = true

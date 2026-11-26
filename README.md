@@ -219,7 +219,7 @@ Para jugar desde el PC contra un móvil, Windows puede pedir permiso en el corta
 ## Controles y opciones
 
 - Al empezar cada nivel hay una cuenta atrás. Cuando termina, la posición en la que sostienes el móvil cuenta como "plano". El botón **Recalibrar** vuelve a fijarla, y al salir de la pausa se recalibra sola.
-- En **Opciones** puedes cambiar la sensibilidad (inclinación máxima), invertir cada eje, mostrar los datos del sensor y quitar la música, los sonidos o la vibración.
+- En **Opciones** puedes cambiar la sensibilidad (inclinación máxima), invertir cada eje, mostrar los datos del sensor y quitar la música, los sonidos o la vibración (también la del mando, si juegas con uno).
 - La inclinación máxima es **automática** mientras no la cambies: 26° en móviles (menos de 7,5") y 20° en tablets. El botón **Auto** vuelve al valor recomendado.
 - La respuesta a la inclinación es curva: los primeros grados empujan poco, para tener control fino, y la fuerza crece rápido hasta el máximo. Se ajusta con `response_exponent` en `scripts/marble.gd`.
 - Si el móvil no tiene sensor de gravedad, se usa el acelerómetro con un filtro más fuerte contra el temblor de la mano. "Mostrar datos del sensor" indica qué sensor se está usando.

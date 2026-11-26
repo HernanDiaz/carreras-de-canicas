@@ -147,7 +147,18 @@ func make_loop(sound_name: String) -> AudioStreamPlayer:
 	return player
 
 
-## Vibración corta (en el PC no hace nada).
+## Vibración corta: la del móvil y, si hay mandos conectados, la de los mandos.
 func vibrate(milliseconds: int, amplitude := -1.0) -> void:
-	if GameState.vibration_on and OS.has_feature("mobile"):
+	if not GameState.vibration_on:
+		return
+	if OS.has_feature("mobile"):
 		Input.vibrate_handheld(milliseconds, amplitude)
+	for device in Input.get_connected_joypads():
+		rumble(device, milliseconds, amplitude)
+
+
+## Vibración de un mando. Sin amplitud (-1) va a media fuerza; el motor pequeño lleva el
+## golpe y el grande la mitad, para que un toque suave no retumbe.
+func rumble(device: int, milliseconds: int, amplitude := -1.0) -> void:
+	var strength := 0.5 if amplitude < 0.0 else clampf(amplitude, 0.0, 1.0)
+	Input.start_joy_vibration(device, strength, strength * 0.5, milliseconds / 1000.0)
