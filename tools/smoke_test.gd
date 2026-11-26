@@ -31,6 +31,7 @@ func _ready() -> void:
 	_check_unknown_level()
 	_check_service_ids()
 	await _check_respawn_protection()
+	await _check_speed_trail()
 	_check_catapult_aim()
 	await _check_coaster_routes()
 	await _check_overlay_fits()
@@ -498,6 +499,23 @@ func _check_coaster_routes() -> void:
 	marble.free()
 	camera.free()
 	level.free()
+
+
+## Estela de velocidad: sale yendo deprisa y no parada ni recién reaparecida.
+func _check_speed_trail() -> void:
+	var marble: Marble = load("res://scenes/marble.tscn").instantiate()
+	add_child(marble)
+	await get_tree().physics_frame
+	var still := marble.is_trailing()
+	marble.linear_velocity = Vector3(12, 0, 0)
+	await get_tree().physics_frame
+	var fast := marble.is_trailing()
+	marble.respawn(Vector3(0, 5, 0))
+	await get_tree().physics_frame
+	var respawned := marble.is_trailing()
+	if still or not fast or respawned:
+		_failures.append("estela: parada %s, deprisa %s, al reaparecer %s" % [still, fast, respawned])
+	marble.free()
 
 
 func _check_voices() -> void:

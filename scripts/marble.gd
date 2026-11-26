@@ -60,6 +60,10 @@ var _last_velocity := Vector3.ZERO
 var _impact_mute := 0
 var _impact_cooldown := 0.0
 var _protection := 0.0
+## Estela de puntos brillantes que sale a partir de esta velocidad (m/s).
+const TRAIL_SPEED := 8.0
+static var _trail_mesh: SphereMesh
+var _trail: CPUParticles3D
 ## Consulta de suelo reutilizada (se hace en cada paso de física).
 var _ground_query := PhysicsRayQueryParameters3D.new()
 
@@ -69,6 +73,45 @@ func _ready() -> void:
 	# Si se duerme, no se despierta cuando desaparece el suelo (trampillas).
 	can_sleep = false
 	add_to_group(Chaser.TARGET_GROUP)
+	_trail = _make_trail()
+	add_child(_trail)
+
+
+## Estela para cuando va deprisa (toboganes, catapultas, aceleradores). Las partículas se
+## quedan en el mundo (no siguen a la canica) y se encogen hasta desaparecer.
+func _make_trail() -> CPUParticles3D:
+	if _trail_mesh == null:
+		_trail_mesh = SphereMesh.new()
+		_trail_mesh.radius = 0.16
+		_trail_mesh.height = 0.32
+		_trail_mesh.radial_segments = 8
+		_trail_mesh.rings = 4
+		var glow := StandardMaterial3D.new()
+		glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		glow.albedo_color = Color(0.6, 0.95, 1.0, 0.55)
+		_trail_mesh.material = glow
+	var trail := CPUParticles3D.new()
+	trail.mesh = _trail_mesh
+	trail.amount = 24
+	trail.lifetime = 0.35
+	trail.local_coords = false
+	trail.emitting = false
+	trail.gravity = Vector3.ZERO
+	trail.initial_velocity_min = 0.0
+	trail.initial_velocity_max = 0.0
+	trail.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
+	trail.emission_sphere_radius = 0.2
+	var shrink := Curve.new()
+	shrink.add_point(Vector2(0, 1))
+	shrink.add_point(Vector2(1, 0))
+	trail.scale_amount_curve = shrink
+	trail.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return trail
+
+
+func is_trailing() -> bool:
+	return _trail != null and _trail.emitting
 
 
 func calibrate() -> void:
@@ -173,6 +216,9 @@ func is_grounded() -> bool:
 
 func _physics_process(delta: float) -> void:
 	_protection = maxf(_protection - delta, 0.0)
+	var fast := visible and not freeze and _pending_respawn == null and linear_velocity.length() > TRAIL_SPEED
+	if _trail != null and _trail.emitting != fast:
+		_trail.emitting = fast
 	_update_sensor(delta)
 	_grounded = _check_grounded()
 	_detect_impact(delta)
