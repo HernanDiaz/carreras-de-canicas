@@ -83,6 +83,30 @@ func color_of(id: int) -> Color:
 
 # --- Sala -----------------------------------------------------------------
 
+## Nombre de jugador tal como se guarda y se enseña: sin espacios en los bordes, 16 letras
+## como mucho y "?" si queda vacío.
+static func clean_name(player_name: String) -> String:
+	var clean := player_name.strip_edges().left(16)
+	return clean if clean != "" else "?"
+
+
+## Anuncio de una sala en la red: "etiqueta|nombre|jugadores".
+static func beacon_text(host_name: String, count: int) -> String:
+	return "%s|%s|%d" % [DISCOVERY_TAG, host_name, count]
+
+
+## Lee un anuncio; {} si no es nuestro o está mal. El nombre puede llevar "|" (antes, con uno,
+## la sala no aparecía en la lista): el número de jugadores es siempre lo último.
+static func parse_beacon(text: String) -> Dictionary:
+	var parts := text.split("|")
+	if parts.size() < 3 or parts[0] != DISCOVERY_TAG or not parts[-1].is_valid_int():
+		return {}
+	var count := int(parts[-1])
+	if count < 1 or count > MAX_PLAYERS:
+		return {}
+	return {name = clean_name("|".join(parts.slice(1, -1))), players = count}
+
+
 func host(player_name: String) -> Error:
 	leave()
 	var peer := ENetMultiplayerPeer.new()
@@ -90,7 +114,7 @@ func host(player_name: String) -> Error:
 	if err != OK:
 		return err
 	multiplayer.multiplayer_peer = peer
-	players = {1: {name = player_name, slot = 0}}
+	players = {1: {name = clean_name(player_name), slot = 0}}
 	level_index = 0
 	stop_discovery()
 	_beacon = PacketPeerUDP.new()
@@ -161,8 +185,7 @@ func _register(player_name: String) -> void:
 	if in_race or players.size() >= MAX_PLAYERS:
 		multiplayer.multiplayer_peer.disconnect_peer(id)
 		return
-	var clean := player_name.strip_edges().left(16)
-	players[id] = {name = clean if clean != "" else "?", slot = _free_slot()}
+	players[id] = {name = clean_name(player_name), slot = _free_slot()}
 	_sync_to_all()
 
 
@@ -233,17 +256,17 @@ func _process(delta: float) -> void:
 		_beacon_timer -= delta
 		if _beacon_timer <= 0.0:
 			_beacon_timer = 1.0
-			var info := "%s|%s|%d" % [DISCOVERY_TAG, players.get(1, {}).get("name", "?"), players.size()]
-			_beacon.put_packet(info.to_utf8_buffer())
+			_beacon.put_packet(beacon_text(players.get(1, {}).get("name", "?"), players.size()).to_utf8_buffer())
 
 	if _listener != null:
 		var changed := false
 		while _listener.get_available_packet_count() > 0:
 			var text := _listener.get_packet().get_string_from_utf8()
 			var ip := _listener.get_packet_ip()
-			var parts := text.split("|")
-			if parts.size() == 3 and parts[0] == DISCOVERY_TAG:
-				found_games[ip] = {name = parts[1], players = int(parts[2]), seen = Time.get_ticks_msec()}
+			var game := parse_beacon(text)
+			if not game.is_empty():
+				game.seen = Time.get_ticks_msec()
+				found_games[ip] = game
 				changed = true
 		for ip in found_games.keys():
 			if Time.get_ticks_msec() - found_games[ip].seen > 3500:

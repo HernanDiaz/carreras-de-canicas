@@ -26,6 +26,7 @@ func _ready() -> void:
 	_check_bad_ghost()
 	_check_voices()
 	_check_rumble()
+	_check_beacon()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -273,6 +274,19 @@ func _check_rumble() -> void:
 		if not is_equal_approx(Input.get_joy_vibration_duration(0), 0.12):
 			_failures.append("vibración del mando dura %s" % Input.get_joy_vibration_duration(0))
 	Input.stop_joy_vibration(0)
+
+
+## Anuncio de sala por Wi-Fi: nombres con "|", espacios o vacíos, y paquetes ajenos o rotos.
+func _check_beacon() -> void:
+	for c in [["Luis", 2, "Luis"], ["A|B", 3, "A|B"], ["  ", 1, "?"], ["|", 4, "|"],
+			["Nombre larguísimo de verdad", 1, "Nombre larguísim"]]:
+		var game := Net.parse_beacon(Net.beacon_text(Net.clean_name(c[0]), c[1]))
+		if game.get("name") != c[2] or game.get("players") != c[1]:
+			_failures.append("anuncio de sala de %s: %s" % [c[0], game])
+	for bad in ["", "hola", "OTRO|Luis|2", Net.DISCOVERY_TAG + "|Luis", Net.DISCOVERY_TAG + "|Luis|x",
+			Net.DISCOVERY_TAG + "|Luis|0", Net.DISCOVERY_TAG + "|Luis|99"]:
+		if not Net.parse_beacon(bad).is_empty():
+			_failures.append("anuncio de sala raro aceptado: %s" % bad)
 
 
 func _check_voices() -> void:
