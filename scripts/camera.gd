@@ -18,6 +18,8 @@ var _shake := 0.0
 
 ## Temblor corto (0..1). Usa h_offset/v_offset, así no estorba al seguimiento ni al adelanto.
 func shake(amount: float) -> void:
+	if not GameState.camera_shake:
+		return
 	_shake = clampf(maxf(_shake, amount), 0.0, 1.0)
 
 

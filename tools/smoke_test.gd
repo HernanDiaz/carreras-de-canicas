@@ -740,6 +740,13 @@ func _check_camera_lead() -> void:
 		_failures.append("cámara: shake() no mueve la cámara")
 	if camera.h_offset != 0.0 or camera.v_offset != 0.0:
 		_failures.append("cámara: el temblor no se apaga (%s, %s)" % [camera.h_offset, camera.v_offset])
+	# Con la opción de temblor quitada, shake() no hace nada.
+	GameState.camera_shake = false
+	camera.shake(1.0)
+	camera._process(1.0 / 60.0)
+	GameState.camera_shake = true
+	if camera.h_offset != 0.0 or camera.v_offset != 0.0:
+		_failures.append("cámara: tiembla con la opción de temblor quitada")
 	camera.free()
 	body.free()
 

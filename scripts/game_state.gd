@@ -60,6 +60,8 @@ var show_ghost := true
 var music_on := true
 var sound_on := true
 var vibration_on := true
+## Temblor de cámara en los golpes fuertes (se puede quitar si marea).
+var camera_shake := true
 var player_name := ""
 ## IP de la última partida por Wi-Fi a la que te uniste (se rellena sola la próxima vez).
 var last_ip := ""
@@ -304,6 +306,7 @@ func save_data() -> void:
 	cfg.set_value("opciones", "musica", music_on)
 	cfg.set_value("opciones", "sonidos", sound_on)
 	cfg.set_value("opciones", "vibracion", vibration_on)
+	cfg.set_value("opciones", "temblor_camara", camera_shake)
 	cfg.set_value("opciones", "nombre", player_name)
 	cfg.set_value("opciones", "ultima_ip", last_ip)
 	cfg.set_value("opciones", "idioma", language)
@@ -337,6 +340,7 @@ func _apply_config(cfg: ConfigFile) -> void:
 	music_on = _value(cfg, "opciones", "musica", music_on)
 	sound_on = _value(cfg, "opciones", "sonidos", sound_on)
 	vibration_on = _value(cfg, "opciones", "vibracion", vibration_on)
+	camera_shake = _value(cfg, "opciones", "temblor_camara", camera_shake)
 	player_name = _value(cfg, "opciones", "nombre", player_name)
 	last_ip = _value(cfg, "opciones", "ultima_ip", "")
 	if not last_ip.is_valid_ip_address():

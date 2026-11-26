@@ -470,7 +470,7 @@ func _build_options() -> Control:
 		func(on: bool) -> void: GameState.show_ghost = on))
 	box.add_child(_check(tr("OPT_SENSOR"), GameState.show_debug,
 		func(on: bool) -> void: GameState.show_debug = on))
-	# Música, sonidos y vibración en una fila (más estrechos) para no alargar la pantalla.
+	# Música, sonidos, vibración y temblor en una fila (más estrechos) para no alargar la pantalla.
 	var sound_row := HBoxContainer.new()
 	sound_row.add_theme_constant_override("separation", 12)
 	sound_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -486,6 +486,8 @@ func _build_options() -> Control:
 		GameState.vibration_on = on
 		Audio.vibrate(40)
 	, 260.0))
+	sound_row.add_child(_check(tr("OPT_SHAKE"), GameState.camera_shake,
+		func(on: bool) -> void: GameState.camera_shake = on, 260.0))
 	box.add_child(sound_row)
 
 	# Los dos últimos botones van en fila para que la pantalla quepa en la altura de un móvil.
