@@ -108,13 +108,23 @@ func _check_menu_fits() -> void:
 		menu._achievements_button.visible = true
 		menu._continue_button.visible = true
 		menu._continue_button.text = tr("CONTINUE_FMT") % 9
-		menu._fill_level_grid()
-		await get_tree().process_frame
-		for screen_name: String in menu._screens:
-			var screen: Control = menu._screens[screen_name]
-			var need := (screen.get_child(0) as Control).get_combined_minimum_size()
-			if need.y > 720.0 or need.x > 1280.0:
-				_failures.append("menú %s (%s) mide %s y no cabe en 1280x720" % [screen_name, locale, need])
+		# Elegir nivel con dos estados: todo bloqueado/sin superar, y todo con récord.
+		var saved := [GameState.best_times.duplicate(), GameState.unlocked]
+		for full in [false, true]:
+			GameState.unlocked = GameState.LEVELS.size() if full else 2
+			GameState.best_times = {}
+			if full:
+				for i in GameState.LEVELS.size():
+					GameState.best_times[i] = 123.4
+			menu._fill_level_grid()
+			await get_tree().process_frame
+			for screen_name: String in menu._screens:
+				var screen: Control = menu._screens[screen_name]
+				var need := (screen.get_child(0) as Control).get_combined_minimum_size()
+				if need.y > 720.0 or need.x > 1280.0:
+					_failures.append("menú %s (%s) mide %s y no cabe en 1280x720" % [screen_name, locale, need])
+		GameState.best_times = saved[0]
+		GameState.unlocked = saved[1]
 		if locale == TranslationServer.get_loaded_locales()[0]:
 			# Esc / B del mando: de Clasificación a Elegir nivel, de ahí al principal, y ahí nada.
 			var cancel := InputEventAction.new()
