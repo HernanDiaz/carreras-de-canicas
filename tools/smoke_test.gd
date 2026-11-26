@@ -141,6 +141,11 @@ func _check_menu_fits() -> void:
 				path.append(menu._current)
 			if path != ["levels", "main", "main"]:
 				_failures.append("menú: Esc va por %s (debe levels, main, main)" % [path])
+			# Intro en el campo de IP intenta unirse (con una IP mala solo avisa; no conecta).
+			menu._net_status.text = ""
+			menu._ip_edit.text_submitted.emit(" no es una ip ")
+			if menu._net_status.text != tr("INVALID_IP"):
+				_failures.append("menú: Intro en el campo de IP no hace nada")
 		menu.free()
 	GameState.apply_language()
 

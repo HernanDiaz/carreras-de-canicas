@@ -405,6 +405,8 @@ func _build_multi() -> Control:
 	ip_row.add_theme_constant_override("separation", 16)
 	_ip_edit = _line_edit("", tr("HOST_IP"))
 	ip_row.add_child(_ip_edit)
+	# Intro en el PC o "Hecho" en el teclado del móvil: igual que pulsar el botón.
+	_ip_edit.text_submitted.connect(func(text: String) -> void: _join(text.strip_edges()))
 	ip_row.add_child(UI.button(tr("JOIN_BY_IP"), func() -> void: _join(_ip_edit.text.strip_edges()), 300.0))
 	box.add_child(ip_row)
 
