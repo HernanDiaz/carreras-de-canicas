@@ -52,7 +52,7 @@ levels/level_01.gd ...     Un script por nivel
 | 7 | La fábrica | Cintas transportadoras, prensas, disco giratorio, gusanos, valle, baches, tobogán en espiral |
 | 8 | Vendaval | Rachas de viento, balancines, cresta estrecha, laberinto |
 | 9 | La gran torre | Barriles rodando, ascensor, torres, medio tubo y meta en un disco giratorio |
-| 10 | El estanque | Río con corriente, nenúfares que se hunden al pisarlos, canal que te lleva y remolinos que te tragan |
+| 10 | Montaña rusa | Tobogán de bajada con curvas, trampolín sobre el vacío, catapulta, medio tubo y salto final a la meta |
 
 Superar un nivel desbloquea el siguiente. El progreso y los récords se guardan en `user://progreso.cfg`.
 
@@ -90,7 +90,7 @@ Superar un nivel desbloquea el siguiente. El progreso y los récords se guardan 
 Piezas disponibles en `Level`:
 - **Pista:** `add_block`, `add_platform` (con punto de control), `add_ramp`, `add_ice_platform`, `make_icy`, `add_moving_platform`, `add_crumble`, `add_trapdoor`, `add_conveyor`, `add_turntable`, `add_seesaw`, `add_tower`.
 - **Terreno:** `add_waves` (baches), `add_valley` (valle en V), `add_chute` y `add_spiral` (toboganes).
-- **Elementos:** `add_bumper`, `add_spinner`, `add_boost`, `add_jump_pad`, `add_acid`, `add_wind`, `add_water` (flotar y corriente), `add_whirlpool` (remolino que arrastra y traga), `add_lily_pad` (nenúfar que se hunde con la canica encima), `add_goal`.
+- **Elementos:** `add_bumper`, `add_spinner`, `add_boost`, `add_jump_pad`, `add_catapult` (te lanza a un punto con vuelo guiado), `add_acid`, `add_wind`, `add_goal`.
 - **Enemigos:** `add_patroller`, `add_chaser`, `add_piston`, `add_pendulum`, `add_crusher`, `add_barrels`, `add_worm`.
 
 Todas las posiciones de suelo son el centro de la cara superior. Se juega hacia `-z` y hacia `+x`.

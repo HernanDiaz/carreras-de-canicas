@@ -1,55 +1,46 @@
 extends Level
-## Nivel 10 · El estanque: un río que cruzar saltando de nenúfar en nenúfar (se hunden si te
-## paras) con un remolino río abajo, un canal con corriente a favor y rocas, y un estanque con
-## un gran remolino en medio y la meta en una isla al fondo.
-## El agua no te hace reaparecer: se nada (peor que rodar) y se sale por las playas.
-
-const WATER := -1.0
+## Nivel 10 · Montaña rusa: un tobogán de bajada con curvas, salto de trampolín sobre el vacío,
+## una catapulta que te lanza a lo alto, un medio tubo de bajada y un último salto a la meta.
+## Todo va de velocidad: si llegas lento al trampolín, no pasas.
 
 
 func build() -> void:
 	add_start()
-	add_ramp(Vector3(0, 0, -3), Vector3(0, WATER, -7), 4.0)
-	add_platform(Vector3(2, WATER, -11), Vector3(24, 2, 8))
 
-	# El río (de oeste a este) con nenúfares para cruzarlo y un remolino río abajo
-	add_block(Vector3(2, -3, -20), Vector3(24, 1, 10), S_HILL)
-	add_block(Vector3(-10.25, 0, -20), Vector3(0.5, 3, 10), S_WALL)
-	add_block(Vector3(14.25, 0, -20), Vector3(0.5, 3, 10), S_WALL)
-	add_water(Vector3(2, WATER, -20), Vector3(24, 2, 10), Vector3(2.5, 0, 0))
-	add_lily_pad(Vector3(0, WATER, -16.2), 1.1, 1.8, true)
-	add_lily_pad(Vector3(0.7, WATER, -18.6))
-	add_lily_pad(Vector3(-0.5, WATER, -21.0), 1.1, 1.8, true)
-	add_lily_pad(Vector3(0.3, WATER, -23.8))
-	# Si te caes, la corriente te lleva hacia el remolino: antes hay una playa a cada orilla
-	add_ramp(Vector3(5, -2.4, -18.5), Vector3(5, WATER, -15), 3.0, S_HILL)
-	add_ramp(Vector3(5, -2.4, -21.5), Vector3(5, WATER, -25), 3.0, S_HILL)
-	add_whirlpool(Vector3(11, WATER, -20), 3.5, 6.0, 4.0)
+	# Arranque con acelerador hasta el borde
+	add_platform(Vector3(0, 0, -8), Vector3(6, 2, 6))
+	add_boost(Vector3(0, 0, -9), Vector3.FORWARD, 6.0)
 
-	add_platform(Vector3(2, WATER, -29), Vector3(24, 2, 8))
+	# Gran bajada en tobogán con curvas. Empieza curvándose poco a poco (como cae la canica
+	# a toda velocidad) para que no salga volando por encima de las paredes.
+	add_chute(PackedVector3Array([
+		Vector3(0, 0, -11), Vector3(0, -0.15, -13), Vector3(0, -0.45, -15), Vector3(0.2, -1.0, -17),
+		Vector3(0.5, -1.8, -19), Vector3(1.0, -2.7, -21), Vector3(1.5, -3.6, -23),
+		Vector3(2.5, -5.8, -28), Vector3(1.5, -8.0, -33), Vector3(0.3, -9.8, -37),
+		Vector3(0, -10.6, -39.5), Vector3(0, -11, -41.5),
+	]), 3.2, 1.6)
 
-	# Canal con corriente a favor y rocas
-	add_block(Vector3(0, -3, -44), Vector3(4, 1, 22), S_HILL)
-	add_block(Vector3(-2.25, 0, -44), Vector3(0.5, 3, 22), S_WALL)
-	add_block(Vector3(2.25, 0, -44), Vector3(0.5, 3, 22), S_WALL)
-	add_water(Vector3(0, WATER, -44), Vector3(4, 2, 22), Vector3(0, 0, -3.5))
-	add_bumper(Vector3(-0.9, WATER, -40))
-	add_bumper(Vector3(0.9, WATER, -46))
-	add_ramp(Vector3(0, -2.4, -51.5), Vector3(0, WATER, -55), 4.0, S_HILL)
+	# Trampolín al final de la bajada y rampa de aterrizaje al otro lado del vacío
+	add_ramp(Vector3(0, -11, -41.5), Vector3(0, -9.8, -45), 3.2)
+	add_ramp(Vector3(0, -10.2, -49), Vector3(0, -15, -60), 10.0, S_CHUTE)
 
-	add_platform(Vector3(0, WATER, -59), Vector3(16, 2, 8))
+	# La catapulta te lanza a la plataforma de arriba
+	add_platform(Vector3(0, -15, -65), Vector3(10, 2, 10))
+	add_block(Vector3(-5.25, -14.2, -65), Vector3(0.5, 0.8, 10), S_WALL)
+	add_block(Vector3(5.25, -14.2, -65), Vector3(0.5, 0.8, 10), S_WALL)
+	add_block(Vector3(0, -14.2, -70.25), Vector3(11, 0.8, 0.5), S_WALL)
+	add_catapult(Vector3(0, -15, -67.5), Vector3(0, -9, -86), 1.4, 9.6)
 
-	# El estanque: gran remolino en medio, nenúfares por el borde oeste hasta la isla
-	add_block(Vector3(0, -3, -73), Vector3(16, 1, 20), S_HILL)
-	add_block(Vector3(-8.25, 0, -73), Vector3(0.5, 3, 20), S_WALL)
-	add_block(Vector3(8.25, 0, -73), Vector3(0.5, 3, 20), S_WALL)
-	add_water(Vector3(0, WATER, -73), Vector3(16, 2, 20))
-	add_whirlpool(Vector3(1.5, WATER, -73), 6.0, 9.0, 6.0)
-	# Playa para volver a la orilla si te caes lejos del remolino
-	add_ramp(Vector3(6, -2.4, -66.5), Vector3(6, WATER, -63), 3.0, S_HILL)
-	for i in 9:
-		add_lily_pad(Vector3(-5.5 if i % 2 == 0 else -5.0, WATER, -64.2 - 2.25 * i), 1.1, 1.8, i % 3 == 1)
+	add_platform(Vector3(0, -9, -88), Vector3(8, 2, 10))
+	add_block(Vector3(-0.5, -8.2, -93.25), Vector3(9, 0.8, 0.5), S_WALL)
+	add_block(Vector3(-4.25, -8.2, -88), Vector3(0.5, 0.8, 10), S_WALL)
 
-	add_platform(Vector3(-2, WATER, -87), Vector3(12, 2, 8))
-	add_block(Vector3(-2, -0.2, -91.25), Vector3(12.5, 0.8, 0.5), S_WALL)
-	add_goal(Vector3(0, WATER, -88))
+	# Bajada por un medio tubo hacia el este (el fondo del surco baja de -11 a -17)
+	add_valley(Vector3(4, -9, -88), Vector3(24, -15, -88), 6.0, 2.0)
+	add_platform(Vector3(28, -17, -88), Vector3(8, 2, 8))
+	add_jump_pad(Vector3(31.2, -17, -88), Vector3.RIGHT, 9.0, 5.0)
+
+	# Isla de la meta al otro lado del último salto
+	add_platform(Vector3(41, -17, -88), Vector3(8, 2, 8))
+	add_block(Vector3(45.25, -16.2, -88), Vector3(0.5, 0.8, 8.5), S_WALL)
+	add_goal(Vector3(41, -17, -88))

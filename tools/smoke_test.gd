@@ -31,9 +31,8 @@ func _ready() -> void:
 	_check_unknown_level()
 	_check_service_ids()
 	await _check_respawn_protection()
-	await _check_water()
-	await _check_whirlpool_and_lily()
-	await _check_pond_routes()
+	_check_catapult_aim()
+	await _check_coaster_routes()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -439,71 +438,21 @@ func _check_respawn_protection() -> void:
 	await get_tree().process_frame
 
 
-## Agua: la canica hundida sube y se queda flotando en la superficie, la corriente la
-## arrastra, y fuera del agua no hay fuerza.
-func _check_water() -> void:
+## La catapulta calcula el tiro: integrando la caída con esa velocidad se llega al objetivo.
+func _check_catapult_aim() -> void:
 	var g := Vector3(0, -9.8, 0)
-	if Level.water_accel(2.0, 0.0, Vector3.ZERO, Vector3.ZERO, g) != Vector3.ZERO:
-		_failures.append("agua: empuja por encima de la superficie")
-	if Level.water_accel(-2.0, 0.0, Vector3.ZERO, Vector3.ZERO, g).y <= 9.8:
-		_failures.append("agua: hundida del todo no flota")
-	var level := Level.new()
-	add_child(level)
-	var floor_body := level.add_block(Vector3(0, -4, 0), Vector3(14, 1, 14), Level.S_FLOOR)
-	var marble: Marble = load("res://scenes/marble.tscn").instantiate()
-	level.marble = marble
-	level.add_water(Vector3.ZERO, Vector3(14, 4, 14), Vector3(2, 0, 0))
-	add_child(marble)
-	marble.global_position = Vector3(-4, -2.5, 0)
-	for _i in 240:
-		await get_tree().physics_frame
-	var pos := marble.global_position
-	if pos.y < -0.6 or pos.y > 0.5:
-		_failures.append("agua: la canica no se queda en la superficie (y = %.2f)" % pos.y)
-	if pos.x < -1.0:
-		_failures.append("agua: la corriente no arrastra (x = %.2f)" % pos.x)
-	if not marble.in_water():
-		_failures.append("agua: la canica no sabe que está en el agua")
-	marble.free()
-	level.free()
-	floor_body = null
+	var from := Vector3(0, 0.5, 0)
+	var to := Vector3(3, 6.5, -20)
+	var v := Level.catapult_velocity(from, to, 1.4, g)
+	var end := from + v * 1.4 + g * 1.4 * 1.4 / 2.0
+	if end.distance_to(to) > 0.01:
+		_failures.append("catapulta: el tiro acaba en %s (debe %s)" % [end, to])
 
 
-## Remolino: tira hacia dentro y alrededor, más cerca más fuerte, nada fuera. Nenúfar: se hunde
-## con la canica encima y vuelve a subir al irse.
-func _check_whirlpool_and_lily() -> void:
-	var near := Level.whirlpool_accel(Vector3(1, 0, 0), 5.0, 6.0, 5.0)
-	var far := Level.whirlpool_accel(Vector3(4, 0, 0), 5.0, 6.0, 5.0)
-	var outside := Level.whirlpool_accel(Vector3(6, 0, 0), 5.0, 6.0, 5.0)
-	if near.x >= 0.0 or absf(near.z) < 0.1 or near.length() <= far.length() or outside != Vector3.ZERO:
-		_failures.append("remolino: cerca %s, lejos %s, fuera %s" % [near, far, outside])
-	var level := Level.new()
-	add_child(level)
-	var marble: Marble = load("res://scenes/marble.tscn").instantiate()
-	level.marble = marble
-	level.add_lily_pad(Vector3.ZERO)
-	var pad: AnimatableBody3D = level.get_child(0)
-	add_child(marble)
-	marble.global_position = Vector3(0, 0.6, 0)
-	var rest := pad.position.y
-	for _i in 90:
-		await get_tree().physics_frame
-	var sunk := pad.position.y
-	marble.global_position = Vector3(20, 5, 0)
-	marble.freeze = true
-	for _i in 150:
-		await get_tree().physics_frame
-	var back := pad.position.y
-	if sunk > rest - 0.5 or back < rest - 0.1:
-		_failures.append("nenúfar: en reposo %.2f, con la canica %.2f, al irse %.2f" % [rest, sunk, back])
-	marble.free()
-	level.free()
-
-
-## Nivel 10 (El estanque) recorrido a ciegas, inclinando solo hacia delante: los nenúfares
-## del río y los del estanque llevan de una orilla a la otra, el canal te lleva solo hasta la
-## playa, y si te caes al río la corriente te lleva al remolino (salvo que nades río arriba).
-func _check_pond_routes() -> void:
+## Nivel 10 (Montaña rusa) recorrido a ciegas, tramo a tramo: inclinando hacia delante se baja
+## por el tobogán, se pasa el trampolín y la catapulta te sube; el medio tubo te deja abajo y
+## el último salto llega a la meta.
+func _check_coaster_routes() -> void:
 	var level: Level = load("res://levels/level_10.gd").new()
 	var marble: Marble = load("res://scenes/marble.tscn").instantiate()
 	var camera := Camera3D.new()
@@ -514,34 +463,28 @@ func _check_pond_routes() -> void:
 	add_child(marble)
 	marble.camera = camera
 	marble.release()
-	var kills := []
-	level.marble_killed.connect(func(reason: String) -> void: kills.append(reason))
+	var goal := level.goal_center
 	# [nombre, salida, acción, segundos, comprobación]
 	var routes := [
-		["río por los nenúfares", Vector3(0, -0.5, -13), "ui_up", 6.0,
-			func(p: Vector3) -> bool: return p.z < -25.5 and p.y > -1.1],
-		["canal", Vector3(0, -0.9, -35), "ui_up", 10.0,
-			func(p: Vector3) -> bool: return p.z < -55.5 and p.y > -1.1],
-		["estanque por los nenúfares", Vector3(-5.25, -0.5, -61), "ui_up", 14.0,
-			func(p: Vector3) -> bool: return p.z < -83.5 and p.y > -1.1],
-		["caída al río (al remolino)", Vector3(3, -0.9, -20), "", 10.0,
-			func(_p: Vector3) -> bool: return kills.has("WHIRLPOOL")],
-		["caída al río, nadando a la playa", Vector3(2, -0.9, -20), "ui_up", 6.0,
-			func(p: Vector3) -> bool: return p.z < -25.5 and p.y > -1.1 and kills.is_empty()],
+		["tobogán, trampolín y catapulta", Vector3(0, 1, -7), "ui_up", 12.0,
+			func(p: Vector3) -> bool: return p.z < -83.5 and p.y > -9.6 and absf(p.x) < 4.0],
+		["catapulta", Vector3(0, -14, -62), "ui_up", 6.0,
+			func(p: Vector3) -> bool: return p.z < -83.5 and p.y > -9.6 and absf(p.x) < 4.0],
+		["medio tubo", Vector3(2, -8, -88), "ui_right", 8.0,
+			func(p: Vector3) -> bool: return p.distance_to(goal - Vector3(13, 0, 0)) < 4.0 and p.y > goal.y - 0.6],
+		["último salto", goal + Vector3(-12, 1, 0), "ui_right", 6.0,
+			func(p: Vector3) -> bool: return Vector2(p.x - goal.x, p.z - goal.z).length() < 3.5 and absf(p.y - goal.y - 0.5) < 0.15],
 	]
 	for route in routes:
-		kills.clear()
 		marble.respawn(route[1])
-		# Sin la protección de reaparecer (que retrasa el remolino 1,5 s).
 		await get_tree().physics_frame
-		marble._protection = 0.0
 		if route[2] != "":
 			Input.action_press(route[2])
 		var reached := false
 		for _i in int(route[3] * 60.0):
 			await get_tree().physics_frame
 			if _i % 15 == 0 and OS.has_environment("TRACE_ROUTES"):
-				print("TRACE %s %.2f %s v=%s agua=%s suelo=%s" % [route[0], _i / 60.0, marble.global_position.snapped(Vector3.ONE * 0.01), marble.linear_velocity.snapped(Vector3.ONE * 0.1), marble.in_water(), marble.is_grounded()])
+				print("TRACE %s %.2f %s v=%s suelo=%s" % [route[0], _i / 60.0, marble.global_position.snapped(Vector3.ONE * 0.01), marble.linear_velocity.snapped(Vector3.ONE * 0.1), marble.is_grounded()])
 			if route[4].call(marble.global_position):
 				reached = true
 				break
@@ -549,7 +492,7 @@ func _check_pond_routes() -> void:
 			Input.action_release(route[2])
 		var pos := marble.global_position
 		if not reached:
-			_failures.append("nivel 10, %s: acaba en %s (reapariciones %s)" % [route[0], pos.snapped(Vector3.ONE * 0.1), kills])
+			_failures.append("nivel 10, %s: acaba en %s" % [route[0], pos.snapped(Vector3.ONE * 0.1)])
 		else:
 			print("SMOKE nivel 10, %s: bien (%s)" % [route[0], pos.snapped(Vector3.ONE * 0.1)])
 	marble.free()

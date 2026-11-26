@@ -44,20 +44,7 @@ const C_GOAL_LIGHT := Color(0.3, 1.0, 0.5)
 const C_ACID := Color(0.45, 1.0, 0.2)
 const C_JUMP := Color(1.0, 0.85, 0.2)
 const C_ENEMY := Color(0.6, 0.25, 0.85)
-const C_WATER := Color(0.2, 0.55, 0.95)
-const C_LILY := Color(0.32, 0.72, 0.3)
-const C_LILY_EDGE := Color(0.2, 0.5, 0.22)
-const C_FLOWER := Color(1.0, 0.6, 0.85)
-## Cuánto baja un nenúfar hundido del todo (la canica se queda flotando y lo pierde).
-const LILY_SINK_DEPTH := 1.0
-## Radio del ojo del remolino: si llegas ahí, te traga.
-const WHIRLPOOL_EYE := 0.9
-## Flotación en el agua (1 = ni sube ni baja): con 1.7 la canica flota con algo más de la
-## mitad hundida.
-const WATER_BUOYANCY := 1.7
-## Cuánto frena el agua (y cuánto arrastra la corriente).
-const WATER_DRAG := 4.0
-
+const C_CATAPULT := Color(1.0, 0.45, 0.2)
 ## La asigna game.gd antes de build(); la usan los enemigos que persiguen.
 var marble: Marble
 var spawn_point := Vector3(0.0, 1.0, 0.0)
@@ -421,175 +408,71 @@ func add_wind(floor_center: Vector3, size: Vector3, dir: Vector3, strength: floa
 	)
 
 
-## Agua: estanque con la superficie en `surface` (centro de la cara de arriba) y tamaño `size`
-## (y = profundidad). La canica flota y la corriente `current` (en m/s) la arrastra. No hace
-## reaparecer: se sale nadando (en el agua se controla peor que en el suelo, ver Marble).
-## Hay que rodearlo de bordes o de suelo más alto para que la corriente no te saque del nivel.
-func add_water(surface: Vector3, size: Vector3, current := Vector3.ZERO) -> void:
-	var box := BoxMesh.new()
-	box.size = size
-	var material := StandardMaterial3D.new()
-	material.albedo_color = Color(C_WATER, 0.5)
-	material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	material.roughness = 0.05
-	material.metallic = 0.3
-	material.emission_enabled = true
-	material.emission = C_WATER
-	material.emission_energy_multiplier = 0.25
-	box.material = material
-	var volume := _add_mesh(self, box, surface - Vector3(0, size.y / 2.0, 0))
-	volume.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	lowest_y = minf(lowest_y, surface.y - size.y)
+## Catapulta: al pisar la cuchara (en `floor_pos`) la canica sale volando y cae en `target`
+## (a ras de suelo) tras `flight_time` segundos. El vuelo sigue la parábola exacta (sin el
+## rozamiento del aire ni el control en el aire), así que siempre llega, entres como entres.
+func add_catapult(floor_pos: Vector3, target: Vector3, flight_time := 1.4, width := 2.4) -> void:
+	var flat := target - floor_pos
+	flat.y = 0.0
+	var dir := flat.normalized()
+	# Base y bisagra, delante de la cuchara (la cuchara gira hacia delante y arriba).
+	var base := BoxMesh.new()
+	base.size = Vector3(width, 0.3, 0.5)
+	base.material = _material(C_CATAPULT.darkened(0.4))
+	var base_instance := _add_mesh(self, base, floor_pos + dir * 1.3 + Vector3(0, 0.15, 0))
+	base_instance.basis = Basis.looking_at(dir)
+	var hinge := Node3D.new()
+	hinge.transform = Transform3D(Basis.looking_at(dir), floor_pos + dir * 1.2 + Vector3(0, 0.12, 0))
+	add_child(hinge)
+	var spoon := BoxMesh.new()
+	spoon.size = Vector3(width - 0.2, 0.1, 2.4)
+	spoon.material = _material(C_CATAPULT, 0.8)
+	# La cuchara va hacia atrás desde la bisagra (en +z local).
+	_add_mesh(hinge, spoon, Vector3(0, 0, 1.2))
+	var lip := BoxMesh.new()
+	lip.size = Vector3(width - 0.2, 0.35, 0.12)
+	lip.material = _material(C_CATAPULT.darkened(0.2), 0.5)
+	_add_mesh(hinge, lip, Vector3(0, 0.15, 2.35))
 
-	if current != Vector3.ZERO:
-		# Espuma que viaja con la corriente, para ver hacia dónde arrastra.
-		var foam := BoxMesh.new()
-		foam.size = Vector3(0.5, 0.02, 0.12)
-		var white := StandardMaterial3D.new()
-		white.albedo_color = Color(1, 1, 1, 0.7)
-		white.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-		white.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		foam.material = white
-		var particles := CPUParticles3D.new()
-		particles.mesh = foam
-		particles.amount = clampi(int(size.x * size.z * 0.3), 8, 60)
-		particles.lifetime = 1.6
-		particles.emission_shape = CPUParticles3D.EMISSION_SHAPE_BOX
-		particles.emission_box_extents = Vector3(size.x * 0.45, 0.0, size.z * 0.45)
-		particles.direction = current.normalized()
-		particles.spread = 0.0
-		particles.gravity = Vector3.ZERO
-		particles.initial_velocity_min = current.length()
-		particles.initial_velocity_max = current.length()
-		particles.particle_flag_align_y = false
-		particles.position = surface + Vector3(0, 0.03, 0)
-		particles.local_coords = false
-		particles.transform.basis = Basis.looking_at(current.normalized())
-		add_child(particles)
-
-	# La zona sube un poco por encima de la superficie: la canica flota medio fuera.
-	var area := _add_area(surface + Vector3(0, 0.5 - size.y / 2.0, 0), size + Vector3(0, 1.0, 0))
-	_animators.append(func(_t: float) -> void:
-		if marble == null or not area.overlaps_body(marble):
+	var area := _add_area(floor_pos + Vector3(0, 0.6, 0), (Basis.looking_at(dir) * Vector3(width, 1.2, 2.4)).abs())
+	var state := {fired = -10.0, last_t = 0.0, flying = false, from = Vector3.ZERO, velocity = Vector3.ZERO, gravity = Vector3.ZERO}
+	area.body_entered.connect(func(body_in: Node3D) -> void:
+		var m := body_in as Marble
+		if m == null or state.last_t - state.fired < 0.8:
 			return
-		var accel := water_accel(marble.global_position.y, surface.y, marble.linear_velocity, current, marble.get_gravity())
-		if accel != Vector3.ZERO:
-			marble.apply_central_force(accel * marble.mass)
-			marble.enter_water()
+		state.fired = state.last_t
+		state.gravity = m.get_gravity()
+		state.from = m.global_position
+		state.flying = true
+		state.velocity = catapult_velocity(state.from, target + Vector3.UP * 0.5, flight_time, state.gravity)
+		m.linear_velocity = state.velocity
+		m.angular_velocity = Vector3.ZERO
+		Audio.play("hit", 0.0, 0.6)
+		Audio.vibrate(40)
 	)
-
-
-## Remolino en el agua (`center` en la superficie): arrastra en espiral hacia el centro, más
-## fuerte cuanto más cerca; en el ojo te traga y reapareces. Solo actúa con la canica en el agua.
-func add_whirlpool(center: Vector3, radius: float, pull := 6.0, swirl := 5.0) -> void:
-	var spin := Node3D.new()
-	spin.position = center + Vector3(0, 0.03, 0)
-	add_child(spin)
-	var eye := CylinderMesh.new()
-	eye.top_radius = WHIRLPOOL_EYE
-	eye.bottom_radius = WHIRLPOOL_EYE
-	eye.height = 0.02
-	eye.material = _material(Color(0.03, 0.1, 0.25))
-	_add_mesh(spin, eye)
-	# Brazos de espuma en espiral, de dentro hacia fuera.
-	var white := _material(Color(0.85, 0.95, 1.0), 0.6)
-	var dashes: Array[BoxMesh] = []
-	for step in 6:
-		var dash := BoxMesh.new()
-		dash.size = Vector3(0.12, 0.02, 0.25 + lerpf(WHIRLPOOL_EYE + 0.3, radius * 0.9, step / 5.0) * 0.25)
-		dash.material = white
-		dashes.append(dash)
-	for arm in 4:
-		for step in 6:
-			var r := lerpf(WHIRLPOOL_EYE + 0.3, radius * 0.9, step / 5.0)
-			var angle := arm * TAU / 4.0 + step * 0.45
-			var piece := _add_mesh(spin, dashes[step], Vector3(cos(angle), 0, sin(angle)) * r)
-			piece.rotation.y = -angle
 	_animators.append(func(t: float) -> void:
-		spin.rotation.y = -t * 1.6
-	)
-
-	var area := _add_area(center, Vector3(radius * 2.0, 2.0, radius * 2.0))
-	_animators.append(func(_t: float) -> void:
-		if marble == null or not marble.in_water() or not area.overlaps_body(marble):
-			return
-		var offset := marble.global_position - center
-		marble.apply_central_force(whirlpool_accel(offset, radius, pull, swirl) * marble.mass)
-		if Vector2(offset.x, offset.z).length() < WHIRLPOOL_EYE and not marble.is_protected():
-			marble_killed.emit("WHIRLPOOL")
-	)
-
-
-## Aceleración del remolino a `offset` de su centro: hacia dentro y alrededor (en sentido
-## horario visto desde arriba), creciendo hacia el centro. Fuera del radio, nada.
-static func whirlpool_accel(offset: Vector3, radius: float, pull: float, swirl: float) -> Vector3:
-	offset.y = 0.0
-	var d := offset.length()
-	if d >= radius or d < 0.001:
-		return Vector3.ZERO
-	var k := 1.0 - d / radius
-	var inward := -offset / d
-	return (inward * pull + inward.cross(Vector3.UP) * swirl) * k
-
-
-## Nenúfar: disco flotante (`center` en la superficie del agua). Se va hundiendo mientras la
-## canica está encima (del todo en `sink_time` segundos) y vuelve a subir cuando se va. No hay
-## que pararse. Cada móvil hunde los suyos: en carrera no se ven hundirse los de los demás.
-func add_lily_pad(center: Vector3, radius := 1.1, sink_time := 1.8, flower := false) -> void:
-	var body := AnimatableBody3D.new()
-	# La cara de arriba queda 3 cm por debajo de la superficie (y de una orilla a ese nivel):
-	# así no hay escalón al subir y la canica no tropieza.
-	var base := center + Vector3(0, -0.13, 0)
-	body.position = base
-	var shape := CylinderShape3D.new()
-	shape.radius = radius
-	shape.height = 0.2
-	var collision := CollisionShape3D.new()
-	collision.shape = shape
-	body.add_child(collision)
-	var disc := CylinderMesh.new()
-	disc.top_radius = radius
-	disc.bottom_radius = radius * 0.95
-	disc.height = 0.2
-	disc.material = _material(C_LILY)
-	_add_mesh(body, disc)
-	var rim := TorusMesh.new()
-	rim.inner_radius = radius - 0.08
-	rim.outer_radius = radius + 0.02
-	rim.material = _material(C_LILY_EDGE)
-	_add_mesh(body, rim, Vector3(0, 0.08, 0))
-	if flower:
-		var bud := SphereMesh.new()
-		bud.radius = 0.16
-		bud.height = 0.26
-		bud.material = _material(C_FLOWER, 0.4)
-		_add_mesh(body, bud, Vector3(radius * 0.55, 0.15, radius * 0.3))
-	add_child(body)
-
-	var area := _add_area(center + Vector3(0, 0.6, 0), Vector3(radius * 1.6, 1.2, radius * 1.6))
-	var phase := randf() * TAU
-	# Sin meta "velocity": solo sube y baja, y la canica no tiene que igualar nada (con ella
-	# se frenaba en seco al pisarlo, como si fuera una plataforma parada).
-	var state := {sink = 0.0, last_t = 0.0}
-	_animators.append(func(t: float) -> void:
-		var dt: float = t - state.last_t
 		state.last_t = t
-		var on := marble != null and area.overlaps_body(marble)
-		state.sink = clampf(state.sink + (dt / sink_time if on else -dt / 1.5), 0.0, 1.0)
-		body.position.y = base.y - LILY_SINK_DEPTH * state.sink * state.sink + 0.015 * sin(t * 2.0 + phase)
+		# Golpe rápido hacia arriba y vuelta despacio.
+		var since: float = t - state.fired
+		if state.flying and marble != null:
+			# Si se sale de la parábola (reaparece, choca...), se acabó el vuelo guiado.
+			var expected: Vector3 = state.from + state.velocity * since + state.gravity * since * since / 2.0
+			if since > flight_time * 0.95 or marble.global_position.distance_to(expected) > 1.5:
+				state.flying = false
+			else:
+				marble.linear_velocity = state.velocity + state.gravity * since
+		var swing := 0.0
+		if since < 0.12:
+			swing = since / 0.12
+		elif since < 1.0:
+			swing = 1.0 - (since - 0.12) / 0.88
+		hinge.basis = Basis.looking_at(dir) * Basis(Vector3.RIGHT, deg_to_rad(-70.0) * swing)
 	)
 
 
-## Aceleración que da el agua a una canica (radio 0,5) con el centro a altura `y`: flotación
-## según lo hundida que esté y un arrastre que la lleva a la velocidad de la corriente.
-static func water_accel(y: float, surface_y: float, velocity: Vector3, current: Vector3, gravity: Vector3) -> Vector3:
-	var submerged := clampf(surface_y - (y - 0.5), 0.0, 1.0)
-	if submerged == 0.0:
-		return Vector3.ZERO
-	var relative := current - velocity
-	# El vaivén vertical se frena más, para que no se quede botando.
-	relative.y *= 1.5
-	return -gravity * WATER_BUOYANCY * submerged + relative * WATER_DRAG * submerged
+## Velocidad para ir de `from` a `to` en `time` segundos con la gravedad `gravity`.
+static func catapult_velocity(from: Vector3, to: Vector3, time: float, gravity: Vector3) -> Vector3:
+	return (to - from) / time - gravity * time / 2.0
 
 
 ## Balancín: tablón (centro de su cara superior `top`, tamaño `size`) que se inclina hacia un
