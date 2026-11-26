@@ -30,6 +30,7 @@ func _ready() -> void:
 	_check_net_state()
 	_check_unknown_level()
 	_check_service_ids()
+	await _check_respawn_protection()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -341,6 +342,26 @@ func _check_service_ids() -> void:
 		for m in regex.search_all(FileAccess.get_file_as_string(path)):
 			if not GameServices.ACHIEVEMENTS.has(m.get_string(1)):
 				_failures.append("logro desconocido en %s: %s" % [path.get_file(), m.get_string(1)])
+
+
+## Recién reaparecida, una canica de acero al lado no la persigue; pasado el margen, sí.
+func _check_respawn_protection() -> void:
+	var marble := Marble.new()
+	var chaser := Chaser.new()
+	add_child(marble)
+	add_child(chaser)
+	marble.global_position = Vector3(2, 0, 0)
+	var before := chaser._nearest_target()
+	marble.respawn(Vector3(2, 0, 0))
+	var protected := chaser._nearest_target()
+	for _i in int(Marble.RESPAWN_PROTECTION * 60.0) + 5:
+		marble._protection = maxf(marble._protection - 1.0 / 60.0, 0.0)
+	var after := chaser._nearest_target()
+	if before == Vector3.INF or protected != Vector3.INF or after == Vector3.INF:
+		_failures.append("protección al reaparecer: antes %s, recién reaparecida %s, después %s" % [before, protected, after])
+	marble.free()
+	chaser.free()
+	await get_tree().process_frame
 
 
 func _check_voices() -> void:

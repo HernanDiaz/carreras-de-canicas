@@ -125,8 +125,8 @@ func _physics_process(_delta: float) -> void:
 func _nearest_target() -> Vector3:
 	var best := Vector3.INF
 	for node in get_tree().get_nodes_in_group(TARGET_GROUP):
-		if node is Marble and node.freeze:
-			continue  # Aún en la salida, celebrando o fin de partida
+		if node is Marble and (node.freeze or node.is_protected()):
+			continue  # Aún en la salida, celebrando, fin de partida o recién reaparecida
 		if node is RemoteMarble and not node.visible:
 			continue
 		var to_target: Vector3 = node.global_position - global_position

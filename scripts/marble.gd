@@ -33,6 +33,9 @@ signal impact(strength: float, landing: bool)
 const IMPACT_THRESHOLD := 2.2
 ## Zona muerta del stick analógico (los sticks gastados no vuelven del todo al centro).
 const STICK_DEAD_ZONE := 0.15
+## Segundos tras reaparecer en los que canicas de acero y gusanos no te persiguen: si uno
+## ronda el punto de control, te daría tiempo a apartarte en vez de caer una y otra vez.
+const RESPAWN_PROTECTION := 1.5
 
 var camera: Camera3D
 ## Sustituye al sensor en el PC (arrastrar con el ratón).
@@ -56,6 +59,7 @@ var _last_velocity := Vector3.ZERO
 ## Fotogramas en los que no se detectan golpes (tras reaparecer, la velocidad cambia de golpe).
 var _impact_mute := 0
 var _impact_cooldown := 0.0
+var _protection := 0.0
 ## Consulta de suelo reutilizada (se hace en cada paso de física).
 var _ground_query := PhysicsRayQueryParameters3D.new()
 
@@ -79,6 +83,7 @@ func respawn(pos: Vector3) -> void:
 	_pending_respawn = pos
 	sleeping = false
 	_impact_mute = 3
+	_protection = RESPAWN_PROTECTION
 	_blink()
 
 
@@ -149,11 +154,17 @@ static func shape_tilt(v: Vector2, dead: float, exponent: float) -> Vector2:
 	return v / amount * pow(t, exponent)
 
 
+## Recién reaparecida: los enemigos no la persiguen todavía.
+func is_protected() -> bool:
+	return _protection > 0.0
+
+
 func is_grounded() -> bool:
 	return _grounded
 
 
 func _physics_process(delta: float) -> void:
+	_protection = maxf(_protection - delta, 0.0)
 	_update_sensor(delta)
 	_grounded = _check_grounded()
 	_detect_impact(delta)

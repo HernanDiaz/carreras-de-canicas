@@ -118,7 +118,7 @@ func _find_target() -> Node3D:
 	var best_distance := INF
 	for node in get_tree().get_nodes_in_group(Chaser.TARGET_GROUP):
 		var target := node as Node3D
-		if target == null or not target.visible:
+		if target == null or not target.visible or (target is Marble and target.is_protected()):
 			continue
 		var pos := to_local(target.global_position)
 		# Solo caza canicas que están sobre su plataforma (ni cayendo ni por encima).
