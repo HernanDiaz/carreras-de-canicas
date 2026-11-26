@@ -475,6 +475,20 @@ func _check_camera_lead() -> void:
 	body.freeze = true
 	if camera._lead() != Vector3.ZERO:
 		_failures.append("cámara: se adelanta con la canica congelada (salida, meta)")
+	# Temblor: dentro del tope mientras dura y vuelve a cero sin dejar la cámara desplazada.
+	camera.target = null
+	camera.shake(1.0)
+	var moved := false
+	for i in 30:
+		camera._process(1.0 / 60.0)
+		moved = moved or camera.h_offset != 0.0 or camera.v_offset != 0.0
+		if absf(camera.h_offset) > camera.max_shake or absf(camera.v_offset) > camera.max_shake:
+			_failures.append("cámara: el temblor pasa del tope")
+			break
+	if not moved:
+		_failures.append("cámara: shake() no mueve la cámara")
+	if camera.h_offset != 0.0 or camera.v_offset != 0.0:
+		_failures.append("cámara: el temblor no se apaga (%s, %s)" % [camera.h_offset, camera.v_offset])
 	camera.free()
 	body.free()
 

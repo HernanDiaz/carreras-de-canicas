@@ -144,6 +144,7 @@ El botón "atrás" de Android pausa la partida y, en el menú, vuelve a la panta
 
 **Qué mirar en el móvil** (la prueba automática no lo puede comprobar en el PC):
 - La cámara se adelanta hacia donde ruedas (`lead_time` / `max_lead` en `scripts/camera.gd`): ¿ayuda o marea?
+- En los golpes fuertes la cámara tiembla un instante (`max_shake` / `shake_time`): ¿se nota sin molestar?
 - La meta perdona botes cortos (`GOAL_GRACE` en `scripts/game.gd`) y vibra suave cada segundo de la cuenta de 3.
 - En el nivel 1, la primera vez, sale «inclina el móvil…» y se lee entero.
 - Sonidos: los 3 últimos segundos suenan más agudos; la música baja en la pausa y al terminar.

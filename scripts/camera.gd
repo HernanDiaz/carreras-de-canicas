@@ -8,11 +8,25 @@ extends Camera3D
 ## lo que viene. Parada, la canica queda en el centro.
 @export var lead_time := 0.25
 @export var max_lead := 3.0
+## Temblor al chocar fuerte: desplazamiento máximo (en metros) y cuánto dura (segundos a fuerza 1).
+@export var max_shake := 0.18
+@export var shake_time := 0.35
 
 var target: Node3D
+var _shake := 0.0
+
+
+## Temblor corto (0..1). Usa h_offset/v_offset, así no estorba al seguimiento ni al adelanto.
+func shake(amount: float) -> void:
+	_shake = clampf(maxf(_shake, amount), 0.0, 1.0)
 
 
 func _process(delta: float) -> void:
+	if _shake > 0.0 or h_offset != 0.0 or v_offset != 0.0:
+		_shake = maxf(_shake - delta / shake_time, 0.0)
+		var s := _shake * _shake * max_shake
+		h_offset = randf_range(-s, s)
+		v_offset = randf_range(-s, s)
 	if target == null:
 		return
 	var desired := target.global_position + offset + _lead()

@@ -811,6 +811,7 @@ func _on_impact(strength: float, landing: bool) -> void:
 		Audio.play("hit", volume, randf_range(0.85, 1.15))
 	if strength > 7.0:
 		Audio.vibrate(25)
+		camera.shake(clampf(0.4 + (strength - 7.0) / 10.0, 0.0, 1.0))
 
 
 ## El sonido de rodar sube de volumen y tono con la velocidad (solo con la canica en el suelo).
