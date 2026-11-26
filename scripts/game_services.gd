@@ -25,8 +25,8 @@ const ACHIEVEMENTS := {
 	steady_hand = {android = "CgkI69erkqoTEAIQCw"},    # Supera un nivel del 5 al 9 sin caerte
 	close_call = {android = "CgkI69erkqoTEAIQDg"},     # Llega a la meta con menos de 3 segundos de margen
 	wifi_win = {android = "CgkI69erkqoTEAIQEA"},       # Gana una carrera Wi-Fi
-	all_levels = {android = "CgkI69erkqoTEAIQEQ"},     # Supera los 9 niveles
-	all_stars = {android = "CgkI69erkqoTEAIQEg"},      # Consigue las 27 estrellas
+	all_levels = {android = "CgkI69erkqoTEAIQEQ"},     # Supera todos los niveles
+	all_stars = {android = "CgkI69erkqoTEAIQEg"},      # Consigue todas las estrellas
 }
 
 ## Pedir la valoración de la tienda al superar por primera vez este número de niveles.
@@ -82,9 +82,15 @@ func available() -> bool:
 	return _signed_in or _play_games != null
 
 
+## true si el nivel tiene clasificación en las dos tiendas. Un nivel nuevo no la tiene hasta
+## que se crea en App Store Connect y en Play Console y se añade a IOS_IDS y ANDROID_IDS.
+func has_leaderboard(level_index: int) -> bool:
+	return level_index >= 0 and level_index < mini(IOS_IDS.size(), ANDROID_IDS.size())
+
+
 ## Envía un tiempo. Game Center y Play Games ya se quedan con el mejor de cada jugador.
 func submit(level_index: int, seconds: float) -> void:
-	if not _signed_in:
+	if not _signed_in or not has_leaderboard(level_index):
 		return
 	# Game Center ("tiempo transcurrido a la centésima") cuenta en centésimas;
 	# Play Games (formato "Tiempo") en milésimas.
@@ -105,6 +111,8 @@ func show_achievements() -> void:
 
 
 func _show(what: int) -> void:
+	if what != _SHOW_ACHIEVEMENTS and not has_leaderboard(what):
+		return
 	if _game_center != null and _signed_in:
 		if what == _SHOW_ACHIEVEMENTS:
 			_game_center.show_achievements()

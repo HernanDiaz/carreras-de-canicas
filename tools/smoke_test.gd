@@ -32,6 +32,8 @@ func _ready() -> void:
 	_check_service_ids()
 	await _check_respawn_protection()
 	await _check_water()
+	await _check_whirlpool_and_lily()
+	await _check_pond_routes()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -190,6 +192,23 @@ func _check_menu_fits() -> void:
 			var cards: int = menu._level_grid.get_child_count()
 			var ranking_cards: int = menu._ranking_grid.get_child_count()
 			var arrows: bool = menu._pagers[0].prev.visible
+			if GameState.LEVELS.size() > 9:
+				# Página 2: los niveles del 10 en adelante, con flechas; la tecla 1 es el nivel 10.
+				var saved_pages := [GameState.unlocked, menu._level_page]
+				GameState.unlocked = GameState.LEVELS.size()
+				var wanted := mini(GameState.LEVELS.size() - 9, 9)
+				var page2: Array = [menu._level_page, cards, menu._pagers[0].prev.disabled, menu._pagers[0].next.disabled,
+					menu._pagers[0].dots.text]
+				var key1 := InputEventKey.new()
+				key1.physical_keycode = KEY_1
+				key1.pressed = true
+				page2.append(menu._level_for_key(key1))
+				if page2[0] != 1 or page2[1] != wanted or page2[2] or not arrows or page2[5] != 9:
+					_failures.append("menú: página 2 = %s, flechas %s" % [page2, arrows])
+				menu._set_page(0)
+				if menu._level_grid.get_child_count() != 9 or not menu._pagers[0].prev.disabled:
+					_failures.append("menú: al volver a la página 1 hay %d tarjetas" % menu._level_grid.get_child_count())
+				GameState.unlocked = saved_pages[0]
 			if GameState.LEVELS.size() <= 9 and (menu._level_page != 0 or cards != GameState.LEVELS.size()
 					or ranking_cards != GameState.LEVELS.size() or arrows):
 				_failures.append("menú: con %d niveles, página %d, %d tarjetas (%d en clasificación), flechas %s"
@@ -375,16 +394,22 @@ func _check_unknown_level() -> void:
 		_failures.append("red: se intenta cargar un nivel que no existe")
 
 
-## Cada nivel tiene su clasificación en Game Center y en Play Juegos (al añadir un nivel hay que
-## crearla en las dos consolas), sin repetir; y cada logro que se desbloquea existe.
+## Clasificaciones de Game Center y Play Juegos: sin repetir ni vacías, como mucho una por nivel
+## y las mismas en las dos tiendas. Un nivel nuevo puede no tenerla aún (se avisa); hay que
+## crearla en las dos consolas. Y cada logro que se desbloquea existe.
 func _check_service_ids() -> void:
 	for ids in [GameServices.IOS_IDS, GameServices.ANDROID_IDS]:
 		var unique := {}
 		for id in ids:
 			unique[id] = true
-		if ids.size() != GameState.LEVELS.size() or unique.size() != ids.size() or unique.has(""):
+		if ids.size() > GameState.LEVELS.size() or unique.size() != ids.size() or unique.has(""):
 			_failures.append("clasificaciones: %d identificadores (%d distintos) para %d niveles"
 				% [ids.size(), unique.size(), GameState.LEVELS.size()])
+	if GameServices.IOS_IDS.size() != GameServices.ANDROID_IDS.size():
+		_failures.append("clasificaciones: %d en iOS y %d en Android" % [GameServices.IOS_IDS.size(), GameServices.ANDROID_IDS.size()])
+	for i in GameState.LEVELS.size():
+		if not GameServices.has_leaderboard(i):
+			print("SMOKE aviso: el nivel %d aún no tiene clasificación en las tiendas" % (i + 1))
 	var regex := RegEx.create_from_string(r'GameServices\.unlock\("([a-z_]+)"\)')
 	for path in ["res://scripts/game.gd", "res://scripts/net.gd", "res://scripts/menu.gd", "res://scripts/game_services.gd"]:
 		for m in regex.search_all(FileAccess.get_file_as_string(path)):
@@ -442,6 +467,94 @@ func _check_water() -> void:
 	marble.free()
 	level.free()
 	floor_body = null
+
+
+## Remolino: tira hacia dentro y alrededor, más cerca más fuerte, nada fuera. Nenúfar: se hunde
+## con la canica encima y vuelve a subir al irse.
+func _check_whirlpool_and_lily() -> void:
+	var near := Level.whirlpool_accel(Vector3(1, 0, 0), 5.0, 6.0, 5.0)
+	var far := Level.whirlpool_accel(Vector3(4, 0, 0), 5.0, 6.0, 5.0)
+	var outside := Level.whirlpool_accel(Vector3(6, 0, 0), 5.0, 6.0, 5.0)
+	if near.x >= 0.0 or absf(near.z) < 0.1 or near.length() <= far.length() or outside != Vector3.ZERO:
+		_failures.append("remolino: cerca %s, lejos %s, fuera %s" % [near, far, outside])
+	var level := Level.new()
+	add_child(level)
+	var marble: Marble = load("res://scenes/marble.tscn").instantiate()
+	level.marble = marble
+	level.add_lily_pad(Vector3.ZERO)
+	var pad: AnimatableBody3D = level.get_child(0)
+	add_child(marble)
+	marble.global_position = Vector3(0, 0.6, 0)
+	var rest := pad.position.y
+	for _i in 90:
+		await get_tree().physics_frame
+	var sunk := pad.position.y
+	marble.global_position = Vector3(20, 5, 0)
+	marble.freeze = true
+	for _i in 150:
+		await get_tree().physics_frame
+	var back := pad.position.y
+	if sunk > rest - 0.5 or back < rest - 0.1:
+		_failures.append("nenúfar: en reposo %.2f, con la canica %.2f, al irse %.2f" % [rest, sunk, back])
+	marble.free()
+	level.free()
+
+
+## Nivel 10 (El estanque) recorrido a ciegas, inclinando solo hacia delante: los nenúfares
+## del río y los del estanque llevan de una orilla a la otra, el canal te lleva solo hasta la
+## playa, y si te caes al río la corriente te lleva al remolino (salvo que nades río arriba).
+func _check_pond_routes() -> void:
+	var level: Level = load("res://levels/level_10.gd").new()
+	var marble: Marble = load("res://scenes/marble.tscn").instantiate()
+	var camera := Camera3D.new()
+	level.marble = marble
+	add_child(level)
+	level.build()
+	add_child(camera)
+	add_child(marble)
+	marble.camera = camera
+	marble.release()
+	var kills := []
+	level.marble_killed.connect(func(reason: String) -> void: kills.append(reason))
+	# [nombre, salida, acción, segundos, comprobación]
+	var routes := [
+		["río por los nenúfares", Vector3(0, -0.5, -13), "ui_up", 6.0,
+			func(p: Vector3) -> bool: return p.z < -25.5 and p.y > -1.1],
+		["canal", Vector3(0, -0.9, -35), "ui_up", 10.0,
+			func(p: Vector3) -> bool: return p.z < -55.5 and p.y > -1.1],
+		["estanque por los nenúfares", Vector3(-5.25, -0.5, -61), "ui_up", 14.0,
+			func(p: Vector3) -> bool: return p.z < -83.5 and p.y > -1.1],
+		["caída al río (al remolino)", Vector3(3, -0.9, -20), "", 10.0,
+			func(_p: Vector3) -> bool: return kills.has("WHIRLPOOL")],
+		["caída al río, nadando a la playa", Vector3(2, -0.9, -20), "ui_up", 6.0,
+			func(p: Vector3) -> bool: return p.z < -25.5 and p.y > -1.1 and kills.is_empty()],
+	]
+	for route in routes:
+		kills.clear()
+		marble.respawn(route[1])
+		# Sin la protección de reaparecer (que retrasa el remolino 1,5 s).
+		await get_tree().physics_frame
+		marble._protection = 0.0
+		if route[2] != "":
+			Input.action_press(route[2])
+		var reached := false
+		for _i in int(route[3] * 60.0):
+			await get_tree().physics_frame
+			if _i % 15 == 0 and OS.has_environment("TRACE_ROUTES"):
+				print("TRACE %s %.2f %s v=%s agua=%s suelo=%s" % [route[0], _i / 60.0, marble.global_position.snapped(Vector3.ONE * 0.01), marble.linear_velocity.snapped(Vector3.ONE * 0.1), marble.in_water(), marble.is_grounded()])
+			if route[4].call(marble.global_position):
+				reached = true
+				break
+		if route[2] != "":
+			Input.action_release(route[2])
+		var pos := marble.global_position
+		if not reached:
+			_failures.append("nivel 10, %s: acaba en %s (reapariciones %s)" % [route[0], pos.snapped(Vector3.ONE * 0.1), kills])
+		else:
+			print("SMOKE nivel 10, %s: bien (%s)" % [route[0], pos.snapped(Vector3.ONE * 0.1)])
+	marble.free()
+	camera.free()
+	level.free()
 
 
 func _check_voices() -> void:

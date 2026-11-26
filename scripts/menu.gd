@@ -369,6 +369,7 @@ func _fill_ranking_grid() -> void:
 		var card := UI.button("%d. %s" % [i + 1, tr(GameState.LEVELS[i].name)], func() -> void: GameServices.show_level(index), 330.0)
 		card.custom_minimum_size.y = 110
 		card.add_theme_font_size_override("font_size", 26)
+		card.disabled = not GameServices.has_leaderboard(i)
 		_ranking_grid.add_child(card)
 	_update_pagers()
 

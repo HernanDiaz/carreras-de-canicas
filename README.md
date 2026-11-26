@@ -52,6 +52,7 @@ levels/level_01.gd ...     Un script por nivel
 | 7 | La fábrica | Cintas transportadoras, prensas, disco giratorio, gusanos, valle, baches, tobogán en espiral |
 | 8 | Vendaval | Rachas de viento, balancines, cresta estrecha, laberinto |
 | 9 | La gran torre | Barriles rodando, ascensor, torres, medio tubo y meta en un disco giratorio |
+| 10 | El estanque | Río con corriente, nenúfares que se hunden al pisarlos, canal que te lleva y remolinos que te tragan |
 
 Superar un nivel desbloquea el siguiente. El progreso y los récords se guardan en `user://progreso.cfg`.
 
@@ -62,7 +63,7 @@ Superar un nivel desbloquea el siguiente. El progreso y los récords se guardan 
 - Android: Servicios de Juegos de Google Play (plugin en `addons/GodotPlayGameServices`, exportación con gradle). Game ID `664147782635`; los ID de los marcadores están en `game_services.gd` (tiempo en milésimas).
 - En el PC no hacen nada.
 
-**Logros** (`ACHIEVEMENTS` en `scripts/game_services.gd`): primera meta, 3 estrellas en un nivel, mejorar un récord, nivel 5–9 sin perder la canica, meta con menos de 3 s, ganar una carrera Wi‑Fi, los 9 niveles y las 27 estrellas. Se guardan en el progreso y se envían al iniciar sesión (los que ya correspondían por el progreso se conceden solos). En iOS el ID es la clave; en Android, el que da Play Console. Iconos: `python tools/make_achievement_icons.py` → `icon/achievements/`.
+**Logros** (`ACHIEVEMENTS` en `scripts/game_services.gd`): primera meta, 3 estrellas en un nivel, mejorar un récord, nivel 5–9 sin perder la canica, meta con menos de 3 s, ganar una carrera Wi‑Fi, todos los niveles y todas las estrellas (se calcula con `GameState.LEVELS`: al añadir un nivel hay que actualizar la descripción en App Store Connect y Play Console). Un nivel sin ID de clasificación en `IOS_IDS`/`ANDROID_IDS` se juega igual, pero no envía tiempos y su tarjeta de Clasificaciones sale desactivada. Se guardan en el progreso y se envían al iniciar sesión (los que ya correspondían por el progreso se conceden solos). En iOS el ID es la clave; en Android, el que da Play Console. Iconos: `python tools/make_achievement_icons.py` → `icon/achievements/`.
 
 **Progreso en la nube**: los récords, los logros y los reinicios del progreso se guardan también en iCloud (iOS, almacén clave-valor) y en los Juegos guardados de Play Juegos (Android, al iniciar sesión). Al abrir el juego se mezclan con los del aparato (el mejor tiempo de cada nivel y todos los logros), así que no se pierde nada al cambiar de móvil o reinstalar. Las opciones y los fantasmas no se suben. Código en `GameState.cloud_data()/merge_cloud()` y `GameServices`.
 
@@ -89,7 +90,7 @@ Superar un nivel desbloquea el siguiente. El progreso y los récords se guardan 
 Piezas disponibles en `Level`:
 - **Pista:** `add_block`, `add_platform` (con punto de control), `add_ramp`, `add_ice_platform`, `make_icy`, `add_moving_platform`, `add_crumble`, `add_trapdoor`, `add_conveyor`, `add_turntable`, `add_seesaw`, `add_tower`.
 - **Terreno:** `add_waves` (baches), `add_valley` (valle en V), `add_chute` y `add_spiral` (toboganes).
-- **Elementos:** `add_bumper`, `add_spinner`, `add_boost`, `add_jump_pad`, `add_acid`, `add_wind`, `add_water` (flotar y corriente), `add_goal`.
+- **Elementos:** `add_bumper`, `add_spinner`, `add_boost`, `add_jump_pad`, `add_acid`, `add_wind`, `add_water` (flotar y corriente), `add_whirlpool` (remolino que arrastra y traga), `add_lily_pad` (nenúfar que se hunde con la canica encima), `add_goal`.
 - **Enemigos:** `add_patroller`, `add_chaser`, `add_piston`, `add_pendulum`, `add_crusher`, `add_barrels`, `add_worm`.
 
 Todas las posiciones de suelo son el centro de la cara superior. Se juega hacia `-z` y hacia `+x`.

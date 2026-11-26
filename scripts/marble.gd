@@ -8,7 +8,7 @@ extends RigidBody3D
 ## Fracción de control sobre hielo.
 @export var ice_control := 0.3
 ## Fracción de control flotando en el agua.
-@export var water_control := 0.55
+@export var water_control := 0.35
 ## Fuerza con la que la canica acompaña a una plataforma móvil.
 @export var platform_grip := 12.0
 ## Grados de inclinación respecto a la posición calibrada para empuje máximo.

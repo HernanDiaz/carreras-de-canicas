@@ -45,11 +45,18 @@ const C_ACID := Color(0.45, 1.0, 0.2)
 const C_JUMP := Color(1.0, 0.85, 0.2)
 const C_ENEMY := Color(0.6, 0.25, 0.85)
 const C_WATER := Color(0.2, 0.55, 0.95)
+const C_LILY := Color(0.32, 0.72, 0.3)
+const C_LILY_EDGE := Color(0.2, 0.5, 0.22)
+const C_FLOWER := Color(1.0, 0.6, 0.85)
+## Cuánto baja un nenúfar hundido del todo (la canica se queda flotando y lo pierde).
+const LILY_SINK_DEPTH := 1.0
+## Radio del ojo del remolino: si llegas ahí, te traga.
+const WHIRLPOOL_EYE := 0.9
 ## Flotación en el agua (1 = ni sube ni baja): con 1.7 la canica flota con algo más de la
 ## mitad hundida.
 const WATER_BUOYANCY := 1.7
 ## Cuánto frena el agua (y cuánto arrastra la corriente).
-const WATER_DRAG := 2.5
+const WATER_DRAG := 4.0
 
 ## La asigna game.gd antes de build(); la usan los enemigos que persiguen.
 var marble: Marble
@@ -469,6 +476,107 @@ func add_water(surface: Vector3, size: Vector3, current := Vector3.ZERO) -> void
 		if accel != Vector3.ZERO:
 			marble.apply_central_force(accel * marble.mass)
 			marble.enter_water()
+	)
+
+
+## Remolino en el agua (`center` en la superficie): arrastra en espiral hacia el centro, más
+## fuerte cuanto más cerca; en el ojo te traga y reapareces. Solo actúa con la canica en el agua.
+func add_whirlpool(center: Vector3, radius: float, pull := 6.0, swirl := 5.0) -> void:
+	var spin := Node3D.new()
+	spin.position = center + Vector3(0, 0.03, 0)
+	add_child(spin)
+	var eye := CylinderMesh.new()
+	eye.top_radius = WHIRLPOOL_EYE
+	eye.bottom_radius = WHIRLPOOL_EYE
+	eye.height = 0.02
+	eye.material = _material(Color(0.03, 0.1, 0.25))
+	_add_mesh(spin, eye)
+	# Brazos de espuma en espiral, de dentro hacia fuera.
+	var white := _material(Color(0.85, 0.95, 1.0), 0.6)
+	var dashes: Array[BoxMesh] = []
+	for step in 6:
+		var dash := BoxMesh.new()
+		dash.size = Vector3(0.12, 0.02, 0.25 + lerpf(WHIRLPOOL_EYE + 0.3, radius * 0.9, step / 5.0) * 0.25)
+		dash.material = white
+		dashes.append(dash)
+	for arm in 4:
+		for step in 6:
+			var r := lerpf(WHIRLPOOL_EYE + 0.3, radius * 0.9, step / 5.0)
+			var angle := arm * TAU / 4.0 + step * 0.45
+			var piece := _add_mesh(spin, dashes[step], Vector3(cos(angle), 0, sin(angle)) * r)
+			piece.rotation.y = -angle
+	_animators.append(func(t: float) -> void:
+		spin.rotation.y = -t * 1.6
+	)
+
+	var area := _add_area(center, Vector3(radius * 2.0, 2.0, radius * 2.0))
+	_animators.append(func(_t: float) -> void:
+		if marble == null or not marble.in_water() or not area.overlaps_body(marble):
+			return
+		var offset := marble.global_position - center
+		marble.apply_central_force(whirlpool_accel(offset, radius, pull, swirl) * marble.mass)
+		if Vector2(offset.x, offset.z).length() < WHIRLPOOL_EYE and not marble.is_protected():
+			marble_killed.emit("WHIRLPOOL")
+	)
+
+
+## Aceleración del remolino a `offset` de su centro: hacia dentro y alrededor (en sentido
+## horario visto desde arriba), creciendo hacia el centro. Fuera del radio, nada.
+static func whirlpool_accel(offset: Vector3, radius: float, pull: float, swirl: float) -> Vector3:
+	offset.y = 0.0
+	var d := offset.length()
+	if d >= radius or d < 0.001:
+		return Vector3.ZERO
+	var k := 1.0 - d / radius
+	var inward := -offset / d
+	return (inward * pull + inward.cross(Vector3.UP) * swirl) * k
+
+
+## Nenúfar: disco flotante (`center` en la superficie del agua). Se va hundiendo mientras la
+## canica está encima (del todo en `sink_time` segundos) y vuelve a subir cuando se va. No hay
+## que pararse. Cada móvil hunde los suyos: en carrera no se ven hundirse los de los demás.
+func add_lily_pad(center: Vector3, radius := 1.1, sink_time := 1.8, flower := false) -> void:
+	var body := AnimatableBody3D.new()
+	# La cara de arriba queda 3 cm por debajo de la superficie (y de una orilla a ese nivel):
+	# así no hay escalón al subir y la canica no tropieza.
+	var base := center + Vector3(0, -0.13, 0)
+	body.position = base
+	var shape := CylinderShape3D.new()
+	shape.radius = radius
+	shape.height = 0.2
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	body.add_child(collision)
+	var disc := CylinderMesh.new()
+	disc.top_radius = radius
+	disc.bottom_radius = radius * 0.95
+	disc.height = 0.2
+	disc.material = _material(C_LILY)
+	_add_mesh(body, disc)
+	var rim := TorusMesh.new()
+	rim.inner_radius = radius - 0.08
+	rim.outer_radius = radius + 0.02
+	rim.material = _material(C_LILY_EDGE)
+	_add_mesh(body, rim, Vector3(0, 0.08, 0))
+	if flower:
+		var bud := SphereMesh.new()
+		bud.radius = 0.16
+		bud.height = 0.26
+		bud.material = _material(C_FLOWER, 0.4)
+		_add_mesh(body, bud, Vector3(radius * 0.55, 0.15, radius * 0.3))
+	add_child(body)
+
+	var area := _add_area(center + Vector3(0, 0.6, 0), Vector3(radius * 1.6, 1.2, radius * 1.6))
+	var phase := randf() * TAU
+	# Sin meta "velocity": solo sube y baja, y la canica no tiene que igualar nada (con ella
+	# se frenaba en seco al pisarlo, como si fuera una plataforma parada).
+	var state := {sink = 0.0, last_t = 0.0}
+	_animators.append(func(t: float) -> void:
+		var dt: float = t - state.last_t
+		state.last_t = t
+		var on := marble != null and area.overlaps_body(marble)
+		state.sink = clampf(state.sink + (dt / sink_time if on else -dt / 1.5), 0.0, 1.0)
+		body.position.y = base.y - LILY_SINK_DEPTH * state.sink * state.sink + 0.015 * sin(t * 2.0 + phase)
 	)
 
 
