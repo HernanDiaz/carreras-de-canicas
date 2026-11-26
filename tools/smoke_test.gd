@@ -698,9 +698,10 @@ func _check_level(index: int) -> void:
 	var worm_meshes := {}
 	var worms := level.find_children("*", "Worm", true, false)
 	for worm in worms:
-		for part in worm._parts:
+		for part in worm.find_children("*", "MeshInstance3D", true, false):
 			worm_meshes[part.mesh] = true
-	if worms.size() > 1 and worm_meshes.size() > Worm.SEGMENTS:
+	# 9 segmentos + agujero (2) + boca, ojo, pupila, antena y punta.
+	if worms.size() > 1 and worm_meshes.size() > Worm.SEGMENTS + 7:
 		_failures.append("%s: los gusanos no comparten malla (%d)" % [name, worm_meshes.size()])
 	if level.goal_center == Vector3.ZERO or level.goal_center.distance_to(level.spawn_point) < 5.0:
 		_failures.append("%s: la meta no está colocada (%s)" % [name, level.goal_center])

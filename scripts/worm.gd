@@ -39,6 +39,7 @@ var _face := Vector3.BACK
 ## cara cada uno): menos recursos en la GPU que crear unos nuevos para cada pieza.
 static var _materials := {}
 static var _segment_meshes: Array[SphereMesh] = []
+static var _meshes := {}
 
 
 func _ready() -> void:
@@ -154,74 +155,59 @@ func _place_parts() -> void:
 
 
 func _build_hole() -> void:
-	var pit := CylinderMesh.new()
-	pit.top_radius = 0.8
-	pit.bottom_radius = 0.8
-	pit.height = 0.02
-	pit.material = _material(Color(0.03, 0.02, 0.05))
-	var pit_instance := MeshInstance3D.new()
-	pit_instance.mesh = pit
-	pit_instance.position = hole + Vector3(0, 0.012, 0)
-	add_child(pit_instance)
-	var rim := TorusMesh.new()
-	rim.inner_radius = 0.78
-	rim.outer_radius = 0.98
-	rim.material = _material(Color(0.4, 0.28, 0.2))
-	var rim_instance := MeshInstance3D.new()
-	rim_instance.mesh = rim
-	rim_instance.position = hole + Vector3(0, 0.03, 0)
-	add_child(rim_instance)
+	_piece(self, _cylinder(0.8, 0.8, 0.02, Color(0.03, 0.02, 0.05)), hole + Vector3(0, 0.012, 0))
+	var rim: TorusMesh = _meshes.get("rim")
+	if rim == null:
+		rim = TorusMesh.new()
+		rim.inner_radius = 0.78
+		rim.outer_radius = 0.98
+		rim.material = _material(Color(0.4, 0.28, 0.2))
+		_meshes["rim"] = rim
+	_piece(self, rim, hole + Vector3(0, 0.03, 0))
 
 
 ## Boca, ojos y antenas en la cabeza (el -z local es hacia donde mira).
 func _build_face(head: MeshInstance3D) -> void:
-	var mouth := SphereMesh.new()
-	mouth.radius = 0.32
-	mouth.height = 0.64
-	mouth.material = _material(Color(0.5, 0.02, 0.1))
-	_mouth = MeshInstance3D.new()
-	_mouth.mesh = mouth
-	_mouth.position = Vector3(0, -0.08, -HEAD_RADIUS * 0.72)
-	head.add_child(_mouth)
-
-	var white := _material(Color.WHITE, 0.3)
-	var black := _material(Color(0.05, 0.02, 0.08))
+	_mouth = _piece(head, _sphere(0.32, Color(0.5, 0.02, 0.1)), Vector3(0, -0.08, -HEAD_RADIUS * 0.72))
 	for side in [-1.0, 1.0]:
-		var eye := SphereMesh.new()
-		eye.radius = 0.16
-		eye.height = 0.32
-		eye.material = white
-		var eye_instance := MeshInstance3D.new()
-		eye_instance.mesh = eye
-		eye_instance.position = Vector3(side * 0.22, 0.32, -0.35)
-		head.add_child(eye_instance)
-		var pupil := SphereMesh.new()
-		pupil.radius = 0.08
-		pupil.height = 0.16
-		pupil.material = black
-		var pupil_instance := MeshInstance3D.new()
-		pupil_instance.mesh = pupil
-		pupil_instance.position = Vector3(0, 0, -0.11)
-		eye_instance.add_child(pupil_instance)
+		var eye := _piece(head, _sphere(0.16, Color.WHITE, 0.3), Vector3(side * 0.22, 0.32, -0.35))
+		_piece(eye, _sphere(0.08, Color(0.05, 0.02, 0.08)), Vector3(0, 0, -0.11))
+		var antenna := _piece(head, _cylinder(0.02, 0.04, 0.45, C_SKIN.darkened(0.3)),
+			Vector3(side * 0.18, HEAD_RADIUS + 0.12, 0.05))
+		antenna.rotation = Vector3(0.3, 0, side * -0.4)
+		_piece(antenna, _sphere(0.07, C_STRIPE, 1.5), Vector3(0, 0.25, 0))
 
-		var antenna := CylinderMesh.new()
-		antenna.top_radius = 0.02
-		antenna.bottom_radius = 0.04
-		antenna.height = 0.45
-		antenna.material = _material(C_SKIN.darkened(0.3))
-		var antenna_instance := MeshInstance3D.new()
-		antenna_instance.mesh = antenna
-		antenna_instance.position = Vector3(side * 0.18, HEAD_RADIUS + 0.12, 0.05)
-		antenna_instance.rotation = Vector3(0.3, 0, side * -0.4)
-		head.add_child(antenna_instance)
-		var tip := SphereMesh.new()
-		tip.radius = 0.07
-		tip.height = 0.14
-		tip.material = _material(C_STRIPE, 1.5)
-		var tip_instance := MeshInstance3D.new()
-		tip_instance.mesh = tip
-		tip_instance.position = Vector3(0, 0.25, 0)
-		antenna_instance.add_child(tip_instance)
+
+func _piece(parent: Node3D, mesh: Mesh, pos: Vector3) -> MeshInstance3D:
+	var instance := MeshInstance3D.new()
+	instance.mesh = mesh
+	instance.position = pos
+	parent.add_child(instance)
+	return instance
+
+
+## Mallas compartidas entre gusanos, por forma y color.
+static func _sphere(radius: float, color: Color, emission := 0.0) -> SphereMesh:
+	var key := "sphere|%s|%s|%s" % [radius, color, emission]
+	if not _meshes.has(key):
+		var sphere := SphereMesh.new()
+		sphere.radius = radius
+		sphere.height = radius * 2.0
+		sphere.material = _material(color, emission)
+		_meshes[key] = sphere
+	return _meshes[key]
+
+
+static func _cylinder(top: float, bottom: float, height: float, color: Color) -> CylinderMesh:
+	var key := "cylinder|%s|%s|%s|%s" % [top, bottom, height, color]
+	if not _meshes.has(key):
+		var cylinder := CylinderMesh.new()
+		cylinder.top_radius = top
+		cylinder.bottom_radius = bottom
+		cylinder.height = height
+		cylinder.material = _material(color)
+		_meshes[key] = cylinder
+	return _meshes[key]
 
 
 static func _material(color: Color, emission := 0.0) -> StandardMaterial3D:
