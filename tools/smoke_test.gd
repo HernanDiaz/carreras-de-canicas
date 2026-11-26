@@ -485,6 +485,23 @@ func _check_level(index: int) -> void:
 		if game._start_hint() != "":
 			_failures.append("nivel 1: en carrera no debe haber pista")
 		game.race = false
+		# Los avisos grandes (¡Ya! + pista, nombre del nivel) caben en pantalla en todos los idiomas.
+		var label: Label = game.message_label
+		for locale in TranslationServer.get_loaded_locales():
+			TranslationServer.set_locale(locale)
+			for text in [tr("GO") + "
+" + tr("MOUSE_HINT"), tr("GO") + "
+" + tr("TILT_HINT"),
+					"%s
+3" % tr(GameState.LEVELS[8].name), tr("HOLD_FMT") % 3]:
+				label.text = text
+				label.size = Vector2(label.offset_right - label.offset_left, 0.0)
+				var need := Vector2(maxf(label.size.x, label.get_minimum_size().x), label.get_minimum_size().y)
+				if need.x > 1280.0 or need.y > 400.0:
+					_failures.append("aviso (%s) mide %s y no cabe: %s" % [locale, need, text.replace("
+", " / ")])
+		GameState.apply_language()
+		label.visible = false
 		var time_before: float = game.time_left
 		for case in [[60.0, "60.0", false], [9.96, "10.0", false], [9.9, "9.9", true], [0.04, "0.1", true], [0.0, "0.0", true]]:
 			game.time_left = case[0]
