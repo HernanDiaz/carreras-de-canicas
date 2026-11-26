@@ -23,6 +23,12 @@ var _net_rot := Quaternion.IDENTITY
 var _net_age := 0.0
 var _has_net_state := false
 
+## Forma, mallas y material físico compartidos por todas las canicas de acero (hasta 7 por nivel).
+static var _shape: SphereShape3D
+static var _ball: SphereMesh
+static var _stripe: TorusMesh
+static var _physics: PhysicsMaterial
+
 
 func _ready() -> void:
 	mass = 1.6
@@ -30,28 +36,36 @@ func _ready() -> void:
 	continuous_cd = true
 	linear_damp = 0.2
 	angular_damp = 0.3
-	var physics := PhysicsMaterial.new()
-	physics.friction = 0.8
-	physics.bounce = 0.3
-	physics_material_override = physics
-
-	var shape := SphereShape3D.new()
-	shape.radius = RADIUS
+	if _shape == null:
+		_build_shared()
+	physics_material_override = _physics
 	var collision := CollisionShape3D.new()
-	collision.shape = shape
+	collision.shape = _shape
 	add_child(collision)
+	var ball_instance := MeshInstance3D.new()
+	ball_instance.mesh = _ball
+	add_child(ball_instance)
+	var stripe_instance := MeshInstance3D.new()
+	stripe_instance.mesh = _stripe
+	add_child(stripe_instance)
+
+
+static func _build_shared() -> void:
+	_physics = PhysicsMaterial.new()
+	_physics.friction = 0.8
+	_physics.bounce = 0.3
+
+	_shape = SphereShape3D.new()
+	_shape.radius = RADIUS
 
 	var steel := StandardMaterial3D.new()
 	steel.albedo_color = Color(0.16, 0.16, 0.2)
 	steel.metallic = 0.9
 	steel.roughness = 0.2
-	var ball := SphereMesh.new()
-	ball.radius = RADIUS
-	ball.height = RADIUS * 2.0
-	ball.material = steel
-	var ball_instance := MeshInstance3D.new()
-	ball_instance.mesh = ball
-	add_child(ball_instance)
+	_ball = SphereMesh.new()
+	_ball.radius = RADIUS
+	_ball.height = RADIUS * 2.0
+	_ball.material = steel
 
 	# Franja roja luminosa: al rodar deja ver que gira y la distingue de un obstáculo fijo.
 	var glow := StandardMaterial3D.new()
@@ -59,13 +73,10 @@ func _ready() -> void:
 	glow.emission_enabled = true
 	glow.emission = Color(1.0, 0.15, 0.1)
 	glow.emission_energy_multiplier = 2.5
-	var stripe := TorusMesh.new()
-	stripe.inner_radius = 0.46
-	stripe.outer_radius = 0.54
-	stripe.material = glow
-	var stripe_instance := MeshInstance3D.new()
-	stripe_instance.mesh = stripe
-	add_child(stripe_instance)
+	_stripe = TorusMesh.new()
+	_stripe.inner_radius = 0.46
+	_stripe.outer_radius = 0.54
+	_stripe.material = glow
 
 
 ## Deja de simularse aquí: la posición llegará por red. Sin colisiones físicas

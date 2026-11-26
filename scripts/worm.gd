@@ -35,17 +35,17 @@ var _parts: Array[MeshInstance3D] = []
 var _mouth: MeshInstance3D
 var _face := Vector3.BACK
 
+## Materiales y mallas compartidos por todos los gusanos (hasta 3 por nivel, con 9 segmentos y
+## cara cada uno): menos recursos en la GPU que crear unos nuevos para cada pieza.
+static var _materials := {}
+static var _segment_meshes: Array[SphereMesh] = []
+
 
 func _ready() -> void:
 	_build_hole()
 	for i in SEGMENTS:
-		var radius := _radius(i)
-		var sphere := SphereMesh.new()
-		sphere.radius = radius
-		sphere.height = radius * 2.0
-		sphere.material = _material(C_SKIN if i % 2 == 0 else C_SKIN.lerp(C_STRIPE, 0.5))
 		var part := MeshInstance3D.new()
-		part.mesh = sphere
+		part.mesh = _segment_mesh(i)
 		add_child(part)
 		_parts.append(part)
 		_points.append(hole)
@@ -53,7 +53,18 @@ func _ready() -> void:
 	_place_parts()
 
 
-func _radius(i: int) -> float:
+func _segment_mesh(i: int) -> SphereMesh:
+	if _segment_meshes.is_empty():
+		for k in SEGMENTS:
+			var sphere := SphereMesh.new()
+			sphere.radius = _radius(k)
+			sphere.height = sphere.radius * 2.0
+			sphere.material = _material(C_SKIN if k % 2 == 0 else C_SKIN.lerp(C_STRIPE, 0.5))
+			_segment_meshes.append(sphere)
+	return _segment_meshes[i]
+
+
+static func _radius(i: int) -> float:
 	return lerpf(HEAD_RADIUS, 0.22, float(i) / (SEGMENTS - 1))
 
 
@@ -213,8 +224,12 @@ func _build_face(head: MeshInstance3D) -> void:
 		antenna_instance.add_child(tip_instance)
 
 
-func _material(color: Color, emission := 0.0) -> StandardMaterial3D:
+static func _material(color: Color, emission := 0.0) -> StandardMaterial3D:
+	var key := "%s|%s" % [color, emission]
+	if _materials.has(key):
+		return _materials[key]
 	var material := StandardMaterial3D.new()
+	_materials[key] = material
 	material.albedo_color = color
 	material.roughness = 0.5
 	if emission > 0.0:

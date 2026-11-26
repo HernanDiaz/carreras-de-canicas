@@ -688,6 +688,20 @@ func _check_level(index: int) -> void:
 	print("SMOKE %s: %d bloques, %d mallas" % [name, boxes, unique.size()])
 	if boxes > 10 and unique.size() == boxes:
 		_failures.append("%s: ningún bloque comparte malla" % name)
+	# Canicas de acero y gusanos comparten mallas (ver Chaser._build_shared y Worm._segment_mesh).
+	var chaser_meshes := {}
+	for chaser in level.chasers:
+		for node in chaser.find_children("*", "MeshInstance3D", false, false):
+			chaser_meshes[(node as MeshInstance3D).mesh] = true
+	if level.chasers.size() > 1 and chaser_meshes.size() > 2:
+		_failures.append("%s: las canicas de acero no comparten malla (%d)" % [name, chaser_meshes.size()])
+	var worm_meshes := {}
+	var worms := level.find_children("*", "Worm", true, false)
+	for worm in worms:
+		for part in worm._parts:
+			worm_meshes[part.mesh] = true
+	if worms.size() > 1 and worm_meshes.size() > Worm.SEGMENTS:
+		_failures.append("%s: los gusanos no comparten malla (%d)" % [name, worm_meshes.size()])
 	if level.goal_center == Vector3.ZERO or level.goal_center.distance_to(level.spawn_point) < 5.0:
 		_failures.append("%s: la meta no está colocada (%s)" % [name, level.goal_center])
 	if game.state != game.State.PLAYING:
