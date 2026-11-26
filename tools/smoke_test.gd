@@ -126,6 +126,12 @@ func _check_menu_fits() -> void:
 				for i in GameState.LEVELS.size():
 					GameState.best_times[i] = 123.4
 			menu._fill_level_grid()
+			menu._fill_ranking_grid()
+			# Con más de 9 niveles salen flechas y puntos de página: también tienen que caber.
+			for pager: Dictionary in menu._pagers:
+				for node: Control in [pager.prev, pager.next, pager.dots]:
+					node.visible = true
+				pager.dots.text = "●  ○  ○"
 			await get_tree().process_frame
 			for screen_name: String in menu._screens:
 				var screen: Control = menu._screens[screen_name]
@@ -159,6 +165,34 @@ func _check_menu_fits() -> void:
 			GameState.unlocked = saved_unlocked
 			if got != [0, 1, -1, 1, -1, -1]:
 				_failures.append("menú: teclas de nivel dan %s (debe [0, 1, -1, 1, -1, -1])" % [got])
+			# Páginas de 9 niveles.
+			var pages := [menu.page_count(0), menu.page_count(9), menu.page_count(10), menu.page_count(18),
+				menu.page_count(19), menu.page_of(8), menu.page_of(9), menu.page_range(1, 12), menu.page_range(0, 9)]
+			if str(pages) != str([1, 1, 2, 2, 3, 0, 1, [9, 12], [0, 9]]):
+				_failures.append("menú: cálculo de páginas %s" % [pages])
+			var steps := []
+			for c in [[JOY_BUTTON_LEFT_SHOULDER, 0], [JOY_BUTTON_RIGHT_SHOULDER, 0], [-1, KEY_PAGEUP], [-1, KEY_PAGEDOWN], [-1, KEY_A]]:
+				var ev: InputEvent
+				if c[0] >= 0:
+					ev = InputEventJoypadButton.new()
+					ev.button_index = c[0]
+				else:
+					ev = InputEventKey.new()
+					ev.physical_keycode = c[1]
+				ev.pressed = true
+				steps.append(menu._page_step(ev))
+			if steps != [-1, 1, -1, 1, 0]:
+				_failures.append("menú: LB/RB y Re Pág/Av Pág dan %s" % [steps])
+			# Con los 9 niveles de ahora: una página, sin flechas, con los 9 en las dos pantallas.
+			menu._show("levels")
+			menu._set_page(1)
+			var cards: int = menu._level_grid.get_child_count()
+			var ranking_cards: int = menu._ranking_grid.get_child_count()
+			var arrows: bool = menu._pagers[0].prev.visible
+			if GameState.LEVELS.size() <= 9 and (menu._level_page != 0 or cards != GameState.LEVELS.size()
+					or ranking_cards != GameState.LEVELS.size() or arrows):
+				_failures.append("menú: con %d niveles, página %d, %d tarjetas (%d en clasificación), flechas %s"
+					% [GameState.LEVELS.size(), menu._level_page, cards, ranking_cards, arrows])
 			# Intro en el campo de IP intenta unirse (con una IP mala solo avisa; no conecta).
 			menu._net_status.text = ""
 			menu._ip_edit.text_submitted.emit(" no es una ip ")

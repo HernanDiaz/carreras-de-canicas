@@ -1,11 +1,20 @@
 extends Node3D
 ## Menú principal con fondo 3D animado: portada, selección de nivel, carrera Wi-Fi y opciones.
 
+## Niveles por página en Elegir nivel y Clasificaciones (la cuadrícula de 3x3 que cabe en
+## 1280x720). Con más niveles aparecen flechas < > y puntos de página.
+const LEVELS_PER_PAGE := 9
+
 var _screens := {}
 var _current := ""
 var _t := 0.0
 var _marble_visual: MeshInstance3D
 var _level_grid: GridContainer
+var _ranking_grid: GridContainer
+## Página que se ve en Elegir nivel y en Clasificaciones (la misma en las dos).
+var _level_page := 0
+## Flechas y puntos de página de cada pantalla: {prev, next, dots}.
+var _pagers: Array[Dictionary] = []
 var _suggested_card: Button
 var _continue_button: Button
 var _stars_total: Label
@@ -106,10 +115,30 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif _current == "levels" and _level_for_key(event) >= 0:
 		get_viewport().set_input_as_handled()
 		GameState.play(_level_for_key(event))
+	elif _current in ["levels", "ranking"] and _page_step(event) != 0:
+		get_viewport().set_input_as_handled()
+		_set_page(_level_page + _page_step(event), true)
 
 
-## En Elegir nivel, las teclas 1-9 (también las del teclado numérico) abren ese nivel si está
-## desbloqueado. Devuelve el índice, o -1.
+## LB/RB del mando o Re Pág/Av Pág: -1 o +1 para cambiar de página; 0 si no es ninguna.
+func _page_step(event: InputEvent) -> int:
+	var joy := event as InputEventJoypadButton
+	if joy != null and joy.pressed:
+		if joy.button_index == JOY_BUTTON_LEFT_SHOULDER:
+			return -1
+		if joy.button_index == JOY_BUTTON_RIGHT_SHOULDER:
+			return 1
+	var key := event as InputEventKey
+	if key != null and key.pressed and not key.echo:
+		if key.physical_keycode == KEY_PAGEUP:
+			return -1
+		if key.physical_keycode == KEY_PAGEDOWN:
+			return 1
+	return 0
+
+
+## En Elegir nivel, las teclas 1-9 (también las del teclado numérico) abren el nivel que ocupa
+## ese hueco en la página que se ve, si está desbloqueado. Devuelve el índice, o -1.
 func _level_for_key(event: InputEvent) -> int:
 	var key := event as InputEventKey
 	if key == null or not key.pressed or key.echo:
@@ -120,6 +149,8 @@ func _level_for_key(event: InputEvent) -> int:
 		index = code - KEY_1
 	elif code >= KEY_KP_1 and code <= KEY_KP_9:
 		index = code - KEY_KP_1
+	if index >= 0:
+		index += _level_page * LEVELS_PER_PAGE
 	if index < 0 or index >= GameState.LEVELS.size() or not GameState.is_unlocked(index):
 		return -1
 	return index
@@ -147,7 +178,11 @@ func _show(screen_name: String) -> void:
 	if screen_name == "lobby":
 		_refresh_lobby()
 	if screen_name == "levels":
+		# Se abre en la página del nivel que toca jugar.
+		_level_page = page_of(GameState.suggested_level())
 		_fill_level_grid()
+	if screen_name == "ranking":
+		_fill_ranking_grid()
 	if screen_name == "main":
 		_continue_button.visible = not GameState.best_times.is_empty()
 		_continue_button.text = tr("CONTINUE_FMT") % (GameState.suggested_level() + 1)
@@ -215,7 +250,7 @@ func _build_levels() -> Control:
 	_level_grid.columns = 3
 	_level_grid.add_theme_constant_override("h_separation", 16)
 	_level_grid.add_theme_constant_override("v_separation", 16)
-	box.add_child(_level_grid)
+	box.add_child(_paged(_level_grid))
 	box.add_child(UI.spacer(8))
 	var bottom_row := HBoxContainer.new()
 	bottom_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -242,13 +277,8 @@ func _build_ranking() -> Control:
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 16)
 	grid.add_theme_constant_override("v_separation", 16)
-	for i in GameState.LEVELS.size():
-		var index := i
-		var card := UI.button("%d. %s" % [i + 1, tr(GameState.LEVELS[i].name)], func() -> void: GameServices.show_level(index), 330.0)
-		card.custom_minimum_size.y = 110
-		card.add_theme_font_size_override("font_size", 26)
-		grid.add_child(card)
-	box.add_child(grid)
+	_ranking_grid = grid
+	box.add_child(_paged(grid))
 	box.add_child(UI.spacer(8))
 	var back := UI.button(tr("BACK"), func() -> void: _show("levels"))
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -256,13 +286,100 @@ func _build_ranking() -> Control:
 	return box.get_parent()
 
 
-func _fill_level_grid() -> void:
-	for child in _level_grid.get_children():
+## Cuántas páginas hacen falta para `total` niveles (al menos una).
+static func page_count(total: int) -> int:
+	return maxi(ceili(float(total) / LEVELS_PER_PAGE), 1)
+
+
+## Página en la que está el nivel `index`.
+static func page_of(index: int) -> int:
+	return maxi(index, 0) / LEVELS_PER_PAGE
+
+
+## Niveles de la página `page`: [primero, último + 1).
+static func page_range(page: int, total: int) -> Array[int]:
+	return [mini(page * LEVELS_PER_PAGE, total), mini((page + 1) * LEVELS_PER_PAGE, total)]
+
+
+## Cuadrícula entre flechas < >, con los puntos de página debajo. Con una sola página no se
+## ven ni las flechas ni los puntos.
+func _paged(grid: GridContainer) -> VBoxContainer:
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 6)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 16)
+	var prev := UI.button("<", func() -> void: _set_page(_level_page - 1), 72.0)
+	var next := UI.button(">", func() -> void: _set_page(_level_page + 1), 72.0)
+	prev.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	next.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(prev)
+	row.add_child(grid)
+	row.add_child(next)
+	column.add_child(row)
+	var dots := UI.label("", 26, UI.C_MUTED)
+	dots.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	column.add_child(dots)
+	_pagers.append({prev = prev, next = next, dots = dots})
+	return column
+
+
+func _update_pagers() -> void:
+	var pages := page_count(GameState.LEVELS.size())
+	var marks: Array[String] = []
+	for i in pages:
+		marks.append("●" if i == _level_page else "○")
+	for pager in _pagers:
+		for node: Control in [pager.prev, pager.next, pager.dots]:
+			node.visible = pages > 1
+		pager.prev.disabled = _level_page <= 0
+		pager.next.disabled = _level_page >= pages - 1
+		pager.dots.text = "  ".join(marks)
+
+
+## Cambia de página (las dos pantallas a la vez). Si el foco se queda en una flecha que ya no
+## sirve (o se ha cambiado con LB/RB), pasa a la primera tarjeta de la página.
+func _set_page(page: int, focus_cards := false) -> void:
+	page = clampi(page, 0, page_count(GameState.LEVELS.size()) - 1)
+	if page == _level_page:
+		return
+	_level_page = page
+	_fill_level_grid()
+	_fill_ranking_grid()
+	var owner := get_viewport().gui_get_focus_owner()
+	if focus_cards or owner == null or (owner is BaseButton and (owner as BaseButton).disabled):
+		var grid := _ranking_grid if _current == "ranking" else _level_grid
+		var first := _first_button(grid)
+		if first != null:
+			first.grab_focus()
+
+
+func _clear(node: Node) -> void:
+	# Fuera del árbol ya: así _first_button no encuentra las tarjetas viejas.
+	for child in node.get_children():
+		node.remove_child(child)
 		child.queue_free()
-	# El foco empieza en el nivel que toca jugar.
+
+
+func _fill_ranking_grid() -> void:
+	_clear(_ranking_grid)
+	var span := page_range(_level_page, GameState.LEVELS.size())
+	for i in range(span[0], span[1]):
+		var index := i
+		var card := UI.button("%d. %s" % [i + 1, tr(GameState.LEVELS[i].name)], func() -> void: GameServices.show_level(index), 330.0)
+		card.custom_minimum_size.y = 110
+		card.add_theme_font_size_override("font_size", 26)
+		_ranking_grid.add_child(card)
+	_update_pagers()
+
+
+func _fill_level_grid() -> void:
+	_clear(_level_grid)
+	# El foco empieza en el nivel que toca jugar (si está en esta página).
 	var suggested := GameState.suggested_level()
 	_suggested_card = null
-	for i in GameState.LEVELS.size():
+	var span := page_range(_level_page, GameState.LEVELS.size())
+	for i in range(span[0], span[1]):
 		var info: Dictionary = GameState.LEVELS[i]
 		var detail: String
 		if not GameState.is_unlocked(i):
@@ -289,6 +406,7 @@ func _fill_level_grid() -> void:
 				_suggested_card = card
 		_level_grid.add_child(card)
 	_stars_total.text = "%d / %d" % [GameState.total_stars(), GameState.LEVELS.size() * 3]
+	_update_pagers()
 
 
 func _build_options() -> Control:
