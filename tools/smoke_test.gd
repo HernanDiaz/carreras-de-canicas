@@ -29,6 +29,7 @@ func _ready() -> void:
 	_check_beacon()
 	_check_net_state()
 	_check_unknown_level()
+	_check_service_ids()
 	await _check_overlay_fits()
 	await _check_menu_fits()
 	for i in GameState.LEVELS.size():
@@ -323,6 +324,23 @@ func _check_unknown_level() -> void:
 		_failures.append("red: nivel desconocido da %s" % [reasons])
 	if GameState.current_level != level or Net.in_race:
 		_failures.append("red: se intenta cargar un nivel que no existe")
+
+
+## Cada nivel tiene su clasificación en Game Center y en Play Juegos (al añadir un nivel hay que
+## crearla en las dos consolas), sin repetir; y cada logro que se desbloquea existe.
+func _check_service_ids() -> void:
+	for ids in [GameServices.IOS_IDS, GameServices.ANDROID_IDS]:
+		var unique := {}
+		for id in ids:
+			unique[id] = true
+		if ids.size() != GameState.LEVELS.size() or unique.size() != ids.size() or unique.has(""):
+			_failures.append("clasificaciones: %d identificadores (%d distintos) para %d niveles"
+				% [ids.size(), unique.size(), GameState.LEVELS.size()])
+	var regex := RegEx.create_from_string(r'GameServices\.unlock\("([a-z_]+)"\)')
+	for path in ["res://scripts/game.gd", "res://scripts/net.gd", "res://scripts/menu.gd", "res://scripts/game_services.gd"]:
+		for m in regex.search_all(FileAccess.get_file_as_string(path)):
+			if not GameServices.ACHIEVEMENTS.has(m.get_string(1)):
+				_failures.append("logro desconocido en %s: %s" % [path.get_file(), m.get_string(1)])
 
 
 func _check_voices() -> void:
