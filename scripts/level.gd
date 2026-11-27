@@ -37,6 +37,7 @@ const C_CHUTE_WALL := Color(0.5, 0.85, 1.0, 0.35)
 const S_SEESAW := {pattern = 0, a = Color(0.95, 0.85, 0.55), b = Color(0.85, 0.65, 0.4), side = Color(0.45, 0.3, 0.2), edge = Color(1.0, 0.9, 0.6), tile_size = 0.75}
 const S_TOWER := {pattern = 0, a = Color(0.42, 0.38, 0.62), b = Color(0.36, 0.32, 0.55), side = Color(0.3, 0.26, 0.5), edge = Color(0.62, 0.6, 0.95), tile_size = 1.5}
 const C_BARREL := Color(0.72, 0.42, 0.2)
+const S_CATAPULT := {pattern = 1, a = Color(1.0, 0.62, 0.25), b = Color(0.78, 0.28, 0.12), side = Color(0.45, 0.18, 0.1), edge = Color(1.0, 0.8, 0.45), tile_size = 0.8}
 const S_BOOST := {pattern = 1, a = Color(0.35, 1.0, 1.0), b = Color(0.1, 0.35, 0.55), side = Color(0.1, 0.3, 0.4), edge = Color(0.4, 1.0, 1.0), tile_size = 0.45}
 
 const C_BUMPER := Color(1.0, 0.35, 0.75)
@@ -426,7 +427,8 @@ func add_catapult(floor_pos: Vector3, target: Vector3, flight_time := 1.4, width
 	add_child(hinge)
 	var spoon := BoxMesh.new()
 	spoon.size = Vector3(width - 0.2, 0.1, 2.4)
-	spoon.material = _material(C_CATAPULT, 0.8)
+	# Flechas que apuntan hacia donde lanza (el patrón mira a -z local, que es `dir`).
+	spoon.material = _track_material(spoon.size, S_CATAPULT)
 	# La cuchara va hacia atrás desde la bisagra (en +z local).
 	_add_mesh(hinge, spoon, Vector3(0, 0, 1.2))
 	var lip := BoxMesh.new()

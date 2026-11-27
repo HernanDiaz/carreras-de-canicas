@@ -429,6 +429,7 @@ func _fill_level_grid() -> void:
 ## Marca "¡Nuevo!" en la esquina de arriba a la izquierda de una tarjeta de nivel.
 func _new_badge() -> Label:
 	var badge := UI.label(tr("NEW_BADGE"), 20, UI.C_PANEL)
+	badge.add_theme_constant_override("outline_size", 0)
 	var pill := StyleBoxFlat.new()
 	pill.bg_color = UI.C_STAR
 	pill.set_corner_radius_all(10)
