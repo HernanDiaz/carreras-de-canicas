@@ -397,7 +397,10 @@ func _fill_level_grid() -> void:
 	for i in range(span[0], span[1]):
 		var info: Dictionary = GameState.LEVELS[i]
 		var detail: String
-		if not GameState.is_unlocked(i):
+		if i == GameState.unlocked:
+			# El siguiente por abrir dice cómo: superar el de antes.
+			detail = tr("UNLOCK_BY_FMT") % i
+		elif not GameState.is_unlocked(i):
 			detail = tr("LOCKED")
 		elif GameState.best_times.has(i):
 			detail = tr("RECORD_FMT") % GameState.best_times[i]

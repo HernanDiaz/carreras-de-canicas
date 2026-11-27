@@ -226,8 +226,16 @@ func _check_menu_fits() -> void:
 					_failures.append("menú: marca de nivel nuevo: primera vez %s, otra vez %s, vistos %d"
 						% [badge_first, badge_again, seen_after])
 				GameState.levels_seen = saved_seen
+				# Con 2 desbloqueados, el 3 dice cómo abrirlo (superar el 2) y el 4 solo "Bloqueado".
+				GameState.unlocked = 2
 				menu._set_page(0)
+				menu._fill_level_grid()
+				var next_text: String = (menu._level_grid.get_child(2) as Button).text
+				var far_text: String = (menu._level_grid.get_child(3) as Button).text
+				if not next_text.ends_with(tr("UNLOCK_BY_FMT") % 2) or not far_text.ends_with(tr("LOCKED")):
+					_failures.append("menú: bloqueados dicen %s / %s" % [next_text.replace("\n", " "), far_text.replace("\n", " ")])
 				GameState.unlocked = saved_pages[0]
+				menu._fill_level_grid()
 			if GameState.LEVELS.size() <= 9 and (menu._level_page != 0 or cards != GameState.LEVELS.size()
 					or ranking_cards != GameState.LEVELS.size() or arrows):
 				_failures.append("menú: con %d niveles, página %d, %d tarjetas (%d en clasificación), flechas %s"
