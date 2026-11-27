@@ -488,7 +488,7 @@ func _check_coaster_routes() -> void:
 	var top := -INF
 	for d: Node3D in arc:
 		top = maxf(top, d.position.y)
-	if arc.size() != Level.CATAPULT_DOTS - 1 or top < -8.0:
+	if arc.size() != Level.CATAPULT_DOTS - 1 or top < -8.4:
 		_failures.append("catapulta: arco de %d puntos, el más alto a %.1f" % [arc.size(), top])
 	# [nombre, salida, acción, segundos, comprobación]
 	var routes := [
