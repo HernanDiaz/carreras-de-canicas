@@ -46,6 +46,8 @@ const C_ACID := Color(0.45, 1.0, 0.2)
 const C_JUMP := Color(1.0, 0.85, 0.2)
 const C_ENEMY := Color(0.6, 0.25, 0.85)
 const C_CATAPULT := Color(1.0, 0.45, 0.2)
+## Puntos del arco que enseña adónde lanza la catapulta.
+const CATAPULT_DOTS := 18
 ## La asigna game.gd antes de build(); la usan los enemigos que persiguen.
 var marble: Marble
 var spawn_point := Vector3(0.0, 1.0, 0.0)
@@ -445,6 +447,26 @@ func add_catapult(floor_pos: Vector3, target: Vector3, flight_time := 1.4, width
 	mark.scale = Vector3(1, 0.3, 1)
 	mark.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mark.set_meta("catapult_target", true)
+	# Arco de puntos con la trayectoria (se ve desde la catapulta aunque la diana no).
+	var dot := SphereMesh.new()
+	dot.radius = 0.22
+	dot.height = 0.44
+	dot.radial_segments = 8
+	dot.rings = 4
+	var dot_material := StandardMaterial3D.new()
+	dot_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	dot_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	dot_material.albedo_color = Color(1.0, 0.7, 0.35, 0.85)
+	dot.material = dot_material
+	var start := floor_pos + Vector3.UP * 0.5
+	var arc_velocity := catapult_velocity(start, target + Vector3.UP * 0.5, flight_time, Vector3(0, -9.8, 0))
+	var dots: Array[MeshInstance3D] = []
+	for i in range(1, CATAPULT_DOTS):
+		var s := flight_time * i / CATAPULT_DOTS
+		var piece := _add_mesh(self, dot, start + arc_velocity * s + Vector3(0, -9.8, 0) * s * s / 2.0)
+		piece.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		piece.set_meta("catapult_arc", true)
+		dots.append(piece)
 
 	var area := _add_area(floor_pos + Vector3(0, 0.6, 0), (Basis.looking_at(dir) * Vector3(width, 1.2, 2.4)).abs())
 	var state := {fired = -10.0, last_t = 0.0, flying = false, from = Vector3.ZERO, velocity = Vector3.ZERO, gravity = Vector3.ZERO}
@@ -481,6 +503,10 @@ func add_catapult(floor_pos: Vector3, target: Vector3, flight_time := 1.4, width
 		hinge.basis = Basis.looking_at(dir) * Basis(Vector3.RIGHT, deg_to_rad(-70.0) * swing)
 		var pulse := 1.0 + 0.12 * sin(t * 5.0)
 		mark.scale = Vector3(pulse, 0.3, pulse)
+		# Una onda recorre el arco hacia la diana.
+		for i in dots.size():
+			var wave := 0.5 + 0.5 * sin(t * 6.0 - i * 0.7)
+			dots[i].scale = Vector3.ONE * (0.6 + 0.6 * wave)
 	)
 
 
