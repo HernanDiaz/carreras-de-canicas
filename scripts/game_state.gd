@@ -47,6 +47,11 @@ var resets := 0
 var persist := true
 ## Hasta qué punto de REVIEW_AFTER_LEVELS se ha pedido ya la valoración.
 var review_stage := 0
+## Cuántos niveles había la última vez que se abrió Elegir nivel: los de después salen con
+## la marca "¡Nuevo!" (cuando una actualización añade niveles). Instalación nueva: ninguno.
+var levels_seen := LEVELS.size()
+## Partidas guardadas por versiones de antes de que existiera levels_seen: tenían 9 niveles.
+const LEVELS_BEFORE_SEEN := 9
 
 # Opciones
 var tilt_degrees := 20.0
@@ -287,6 +292,13 @@ func _ghost_path(index: int) -> String:
 	return "%s/nivel_%d.bin" % [GHOST_DIR, index + 1]
 
 
+## Ya se han visto todos los niveles (se llama al abrir Elegir nivel).
+func mark_levels_seen() -> void:
+	if levels_seen < LEVELS.size():
+		levels_seen = LEVELS.size()
+		save_data()
+
+
 func save_data() -> void:
 	if not persist:
 		return
@@ -297,6 +309,7 @@ func save_data() -> void:
 	cfg.set_value("progreso", "logros", achievements)
 	cfg.set_value("progreso", "reinicios", resets)
 	cfg.set_value("progreso", "valoracion", review_stage)
+	cfg.set_value("progreso", "niveles_vistos", levels_seen)
 	cfg.set_value("opciones", "inclinacion", tilt_degrees)
 	cfg.set_value("opciones", "inclinacion_elegida", tilt_custom)
 	cfg.set_value("opciones", "invertir_x", invert_x)
@@ -328,6 +341,7 @@ func _apply_config(cfg: ConfigFile) -> void:
 	achievements.assign(_value(cfg, "progreso", "logros", []).filter(func(a: Variant) -> bool: return a is String))
 	resets = maxi(_value(cfg, "progreso", "reinicios", 0), 0)
 	review_stage = _value(cfg, "progreso", "valoracion", 0)
+	levels_seen = clampi(_value(cfg, "progreso", "niveles_vistos", LEVELS_BEFORE_SEEN), 0, LEVELS.size())
 	# Si una actualización añade niveles, el siguiente al último superado queda desbloqueado.
 	for index in best_times:
 		unlocked = clampi(maxi(unlocked, index + 2), 1, LEVELS.size())

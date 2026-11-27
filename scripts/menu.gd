@@ -16,6 +16,8 @@ var _level_page := 0
 ## Flechas y puntos de página de cada pantalla: {prev, next, dots}.
 var _pagers: Array[Dictionary] = []
 var _suggested_card: Button
+## Los niveles desde este índice llevan la marca "¡Nuevo!" mientras está abierta Elegir nivel.
+var _new_from := GameState.LEVELS.size()
 var _continue_button: Button
 var _stars_total: Label
 var _ranking_button: Button
@@ -180,6 +182,8 @@ func _show(screen_name: String) -> void:
 	if screen_name == "levels":
 		# Se abre en la página del nivel que toca jugar.
 		_level_page = page_of(GameState.suggested_level())
+		_new_from = GameState.levels_seen
+		GameState.mark_levels_seen()
 		_fill_level_grid()
 	if screen_name == "ranking":
 		_fill_ranking_grid()
@@ -415,9 +419,26 @@ func _fill_level_grid() -> void:
 			card.add_child(stars)
 			if i == suggested:
 				_suggested_card = card
+			if i >= _new_from:
+				card.add_child(_new_badge())
 		_level_grid.add_child(card)
 	_stars_total.text = "%d / %d" % [GameState.total_stars(), GameState.LEVELS.size() * 3]
 	_update_pagers()
+
+
+## Marca "¡Nuevo!" en la esquina de arriba a la izquierda de una tarjeta de nivel.
+func _new_badge() -> Label:
+	var badge := UI.label(tr("NEW_BADGE"), 20, UI.C_PANEL)
+	var pill := StyleBoxFlat.new()
+	pill.bg_color = UI.C_STAR
+	pill.set_corner_radius_all(10)
+	pill.content_margin_left = 10
+	pill.content_margin_right = 10
+	badge.add_theme_stylebox_override("normal", pill)
+	badge.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	badge.position = Vector2(10, 8)
+	badge.name = "NewBadge"
+	return badge
 
 
 func _build_options() -> Control:

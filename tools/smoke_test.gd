@@ -208,6 +208,21 @@ func _check_menu_fits() -> void:
 				menu._set_page(0)
 				if menu._level_grid.get_child_count() != 9 or not menu._pagers[0].prev.disabled:
 					_failures.append("menú: al volver a la página 1 hay %d tarjetas" % menu._level_grid.get_child_count())
+				# Actualización con niveles nuevos: el 10 sale con "¡Nuevo!" solo la primera vez.
+				var saved_seen := GameState.levels_seen
+				GameState.levels_seen = 9
+				menu._show("levels")
+				menu._set_page(1)
+				var badge_first: bool = menu._level_grid.get_child(0).has_node("NewBadge")
+				var seen_after := GameState.levels_seen
+				menu._show("levels")
+				menu._set_page(1)
+				var badge_again: bool = menu._level_grid.get_child(0).has_node("NewBadge")
+				if not badge_first or badge_again or seen_after != GameState.LEVELS.size():
+					_failures.append("menú: marca de nivel nuevo: primera vez %s, otra vez %s, vistos %d"
+						% [badge_first, badge_again, seen_after])
+				GameState.levels_seen = saved_seen
+				menu._set_page(0)
 				GameState.unlocked = saved_pages[0]
 			if GameState.LEVELS.size() <= 9 and (menu._level_page != 0 or cards != GameState.LEVELS.size()
 					or ranking_cards != GameState.LEVELS.size() or arrows):
@@ -581,7 +596,7 @@ func _check_bad_options() -> void:
 	var gs := GameState
 	var fields := ["unlocked", "best_times", "achievements", "resets", "review_stage", "tilt_degrees",
 		"tilt_custom", "invert_x", "invert_y", "show_debug", "show_ghost", "music_on", "sound_on",
-		"vibration_on", "player_name", "language", "last_ip"]
+		"vibration_on", "player_name", "language", "last_ip", "levels_seen", "camera_shake"]
 	var saved := {}
 	for f in fields:
 		var v: Variant = gs.get(f)
@@ -598,8 +613,9 @@ func _check_bad_options() -> void:
 	cfg.set_value("opciones", "invertir_x", true)
 	cfg.set_value("opciones", "ultima_ip", "999.1.2.3")
 	gs._apply_config(cfg)
-	var got := [gs.unlocked, gs.achievements, gs.tilt_degrees, gs.music_on, gs.player_name, gs.language, gs.invert_x, gs.last_ip]
-	var want := [1, ["first_win"], 35.0, true, "Ana", "", true, ""]
+	# Sin "niveles_vistos" (partida de antes de la marca de nuevo) cuenta como 9 niveles vistos.
+	var got := [gs.unlocked, gs.achievements, gs.tilt_degrees, gs.music_on, gs.player_name, gs.language, gs.invert_x, gs.last_ip, gs.levels_seen]
+	var want := [1, ["first_win"], 35.0, true, "Ana", "", true, "", GameState.LEVELS_BEFORE_SEEN]
 	cfg.set_value("opciones", "ultima_ip", "192.168.1.20")
 	gs._apply_config(cfg)
 	if gs.last_ip != "192.168.1.20":
