@@ -64,6 +64,9 @@ var _protection := 0.0
 const TRAIL_SPEED := 8.0
 static var _trail_mesh: SphereMesh
 var _trail: CPUParticles3D
+## Golpe de aterrizaje (m/s) a partir del que sale una nube de polvo.
+const DUST_STRENGTH := 7.0
+static var _dust_mesh: SphereMesh
 ## Consulta de suelo reutilizada (se hace en cada paso de física).
 var _ground_query := PhysicsRayQueryParameters3D.new()
 
@@ -75,6 +78,60 @@ func _ready() -> void:
 	add_to_group(Chaser.TARGET_GROUP)
 	_trail = _make_trail()
 	add_child(_trail)
+
+
+## Nube de polvo bajo la canica al aterrizar fuerte: un anillo de bolitas que se abre por el
+## suelo y se desvanece. Va al nivel (no a la canica) para que se quede donde ha caído.
+func puff(strength: float) -> CPUParticles3D:
+	if _dust_mesh == null:
+		_dust_mesh = SphereMesh.new()
+		_dust_mesh.radius = 0.2
+		_dust_mesh.height = 0.4
+		_dust_mesh.radial_segments = 6
+		_dust_mesh.rings = 3
+		var dust := StandardMaterial3D.new()
+		dust.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		dust.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		dust.vertex_color_use_as_albedo = true
+		dust.albedo_color = Color(1, 1, 1, 0.7)
+		_dust_mesh.material = dust
+	var cloud := CPUParticles3D.new()
+	cloud.mesh = _dust_mesh
+	cloud.amount = 16
+	cloud.lifetime = 0.5
+	cloud.one_shot = true
+	cloud.explosiveness = 1.0
+	cloud.local_coords = false
+	cloud.gravity = Vector3.ZERO
+	cloud.direction = Vector3(1, 0, 0)
+	cloud.spread = 180.0
+	cloud.flatness = 1.0
+	# Sale del borde de la canica, no de su centro (si no, la tapa ella misma).
+	cloud.emission_shape = CPUParticles3D.EMISSION_SHAPE_RING
+	cloud.emission_ring_axis = Vector3.UP
+	cloud.emission_ring_radius = 0.45
+	cloud.emission_ring_inner_radius = 0.4
+	cloud.emission_ring_height = 0.0
+	var speed := clampf(1.5 + (strength - DUST_STRENGTH) * 0.3, 1.5, 4.0)
+	cloud.initial_velocity_min = speed * 0.7
+	cloud.initial_velocity_max = speed
+	cloud.damping_min = 3.0
+	cloud.damping_max = 4.0
+	var shrink := Curve.new()
+	shrink.add_point(Vector2(0, 1))
+	shrink.add_point(Vector2(1, 0))
+	cloud.scale_amount_curve = shrink
+	var fade := Gradient.new()
+	fade.set_color(0, Color(1, 1, 1, 0.8))
+	fade.set_color(1, Color(1, 1, 1, 0))
+	cloud.color_ramp = fade
+	cloud.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var parent := get_parent() if get_parent() != null else self
+	parent.add_child(cloud)
+	cloud.global_position = global_position + Vector3(0, -0.4, 0)
+	cloud.emitting = true
+	cloud.finished.connect(cloud.queue_free)
+	return cloud
 
 
 ## Estela para cuando va deprisa (toboganes, catapultas, aceleradores). Las partículas se

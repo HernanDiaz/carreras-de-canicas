@@ -551,6 +551,15 @@ func _check_speed_trail() -> void:
 	var respawned := marble.is_trailing()
 	if still or not fast or respawned:
 		_failures.append("estela: parada %s, deprisa %s, al reaparecer %s" % [still, fast, respawned])
+	# Polvo al aterrizar fuerte: sale bajo la canica, en el nivel, y se borra solo al acabar.
+	var cloud := marble.puff(12.0)
+	var under := cloud.global_position.distance_to(marble.global_position + Vector3(0, -0.4, 0)) < 0.01
+	if cloud.get_parent() != self or not cloud.emitting or not under or not cloud.one_shot:
+		_failures.append("polvo: padre %s, emitiendo %s, debajo %s" % [cloud.get_parent(), cloud.emitting, under])
+	for _i in 40:
+		await get_tree().physics_frame
+	if is_instance_valid(cloud) and not cloud.is_queued_for_deletion():
+		_failures.append("polvo: la nube no se borra al acabar")
 	marble.free()
 
 

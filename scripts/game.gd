@@ -829,6 +829,8 @@ func _on_impact(strength: float, landing: bool) -> void:
 		Audio.play("land", volume, randf_range(0.9, 1.1))
 	else:
 		Audio.play("hit", volume, randf_range(0.85, 1.15))
+	if landing and strength > Marble.DUST_STRENGTH:
+		marble.puff(strength)
 	if strength > 7.0:
 		Audio.vibrate(25)
 		camera.shake(clampf(0.4 + (strength - 7.0) / 10.0, 0.0, 1.0))
