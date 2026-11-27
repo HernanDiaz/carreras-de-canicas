@@ -141,6 +141,9 @@ func _process(delta: float) -> void:
 	# La niebla baja contigo en los niveles que descienden mucho.
 	var fog_target := camera.target.global_position.y - FOG_BELOW if camera.target != null else -FOG_BELOW
 	_environment.fog_height = lerpf(_environment.fog_height, fog_target, 1.0 - exp(-2.0 * delta))
+	# Recalibrar solo sirve con sensor de inclinación: en el PC (ratón, teclado) no sale.
+	if not _spectating:
+		calibrate_button.visible = tilt_simulator.has_real_sensor()
 	match state:
 		State.WAITING:
 			_show_message(tr("WAITING_OTHERS"), 0.2)

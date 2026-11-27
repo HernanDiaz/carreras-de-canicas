@@ -850,6 +850,10 @@ func _check_level(index: int) -> void:
 	add_child(game)
 	var marble: Marble = game.marble
 	if index == 0:
+		# Sin sensor (PC, prueba sin cabeza) no tiene sentido el botón de recalibrar.
+		await get_tree().process_frame
+		if game.calibrate_button.visible:
+			_failures.append("sin sensor no debe salir el botón de recalibrar")
 		# Punto de control: anillo solo si cambia el sitio y no es la salida.
 		var saved_state: int = game.state
 		game.state = game.State.PLAYING
