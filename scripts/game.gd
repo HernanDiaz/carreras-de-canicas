@@ -943,6 +943,7 @@ func _on_checkpoint(pos: Vector3) -> void:
 	if moved and state == State.PLAYING and pos.distance_to(level.spawn_point) > 0.5:
 		_flash_checkpoint(pos)
 		Audio.play("checkpoint", -6.0)
+		Audio.vibrate(12, 0.3)
 
 
 func _flash_checkpoint(pos: Vector3) -> MeshInstance3D:

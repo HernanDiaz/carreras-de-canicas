@@ -947,6 +947,7 @@ func add_jump_pad(floor_pos: Vector3, dir: Vector3, forward_speed: float, up_spe
 			m.linear_velocity = dir * forward_speed + Vector3.UP * up_speed
 			if m == marble:
 				Audio.play("launch", -3.0, 1.15)
+				Audio.vibrate(30)
 	)
 
 
