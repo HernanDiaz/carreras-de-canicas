@@ -3,7 +3,7 @@
 
 Salidas en sounds/ (WAV mono de 16 bits; Godot los importa y comprime):
   efectos: roll (bucle), hit, land, fall, zap, respawn, beep, go, tick, win, lose, star,
-           click, achievement
+           click, achievement, launch
   música:  music_menu, music_game (bucles sin cortes)
 
 El resultado es siempre el mismo (semilla fija), así que se puede volver a generar sin
@@ -367,10 +367,28 @@ def make_music_game():
     save("music_game", buffer, MUSIC_RATE, 0.55)
 
 
+def make_launch():
+    # Zas que sube: soplido que se aclara y un muelle (catapulta, plataformas de salto).
+    rate = SFX_RATE
+    t = t_axis(0.55, rate)
+    sweep = 300 + 1400 * (t / t[-1]) ** 0.6
+    noise = rng.standard_normal(len(t))
+    air = np.zeros_like(t)
+    # Ruido filtrado por tramos con el centro subiendo.
+    pieces = 8
+    for i in range(pieces):
+        a, b = i * len(t) // pieces, (i + 1) * len(t) // pieces
+        air[a:b] = bandpass(noise, rate, float(sweep[(a + b) // 2]), 500)[a:b]
+    spring_freq = 180 + 520 * (1 - np.exp(-t * 9))
+    spring = np.sin(2 * np.pi * np.cumsum(spring_freq) / rate) * np.exp(-t * 7) * 0.6
+    env = np.minimum(t / 0.03, 1) * np.exp(-t * 3.5)
+    save("launch", fade((air * 0.5 + spring) * env, rate, 0.001, 0.06), rate, 0.75)
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     for make in [make_roll, make_hit, make_land, make_fall, make_zap, make_respawn, make_beeps,
                  make_tick, make_win, make_lose, make_star, make_click, make_achievement,
-                 make_music_menu, make_music_game]:
+                 make_music_menu, make_music_game, make_launch]:
         make()
     print("Sonidos generados en", os.path.normpath(OUT))

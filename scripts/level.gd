@@ -457,7 +457,7 @@ func add_catapult(floor_pos: Vector3, target: Vector3, flight_time := 1.4, width
 		state.velocity = catapult_velocity(state.from, target + Vector3.UP * 0.5, flight_time, state.gravity)
 		m.linear_velocity = state.velocity
 		m.angular_velocity = Vector3.ZERO
-		Audio.play("hit", 0.0, 0.6)
+		Audio.play("launch")
 		Audio.vibrate(40)
 	)
 	_animators.append(func(t: float) -> void:
@@ -917,6 +917,8 @@ func add_jump_pad(floor_pos: Vector3, dir: Vector3, forward_speed: float, up_spe
 		var m := body_in as Marble
 		if m != null:
 			m.linear_velocity = dir * forward_speed + Vector3.UP * up_speed
+			if m == marble:
+				Audio.play("launch", -3.0, 1.15)
 	)
 
 
