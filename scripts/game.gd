@@ -496,6 +496,11 @@ func _pause() -> void:
 	# Nombre del nivel arriba: si vuelves a la app al rato, sabes dónde estabas.
 	var index := GameState.current_level
 	var subtitle := "%d. %s" % [index + 1, tr(GameState.LEVELS[index].name)]
+	# Y su consejo, siempre (al salir solo se ve hasta superarlo): por si te atascas.
+	var tip: String = GameState.LEVELS[index].get("tip", "")
+	if tip != "":
+		subtitle += "
+" + tr(tip)
 	var goal := _goal_text()
 	if goal != "":
 		subtitle += "

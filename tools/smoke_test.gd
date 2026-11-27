@@ -85,11 +85,15 @@ func _check_overlay_fits() -> void:
 		if need.y > 720.0 or need.x > 1280.0:
 			_failures.append("pantalla de tiempo agotado (%s) mide %s y no cabe en 1280x720" % [locale, need])
 		overlay.free()
-		# Pausa: nombre del nivel (todos), récord y siguiente estrella, con 3 botones.
+		# Pausa: nombre del nivel (todos), su consejo, récord y siguiente estrella, con 3 botones.
 		for i in GameState.LEVELS.size():
-			subtitle = "%d. %s
+			var tip_line := ""
+			if GameState.LEVELS[i].has("tip"):
+				tip_line = "
+" + tr(GameState.LEVELS[i].tip)
+			subtitle = "%d. %s%s
 %s
-%s" % [i + 1, tr(GameState.LEVELS[i].name), tr("RECORD_FMT") % 123.4,
+%s" % [i + 1, tr(GameState.LEVELS[i].name), tip_line, tr("RECORD_FMT") % 123.4,
 				tr("NEXT_STAR_FMT") % 45.0]
 			var pause_buttons := []
 			for key in ["RESUME", "RESTART_LEVEL", "MAIN_MENU"]:
