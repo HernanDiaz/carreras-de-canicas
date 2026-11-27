@@ -501,13 +501,17 @@ func _check_coaster_routes() -> void:
 		["último salto", goal + Vector3(-12, 1, 0), "ui_right", 6.0,
 			func(p: Vector3) -> bool: return Vector2(p.x - goal.x, p.z - goal.z).length() < 3.5 and absf(p.y - goal.y - 0.5) < 0.15],
 	]
+	# Tiempo del recorrido entero (sin el tramo "catapulta", que repite parte del primero).
+	var run_time := 0.0
 	for route in routes:
 		marble.respawn(route[1])
 		await get_tree().physics_frame
 		if route[2] != "":
 			Input.action_press(route[2])
 		var reached := false
+		var frames := 0
 		for _i in int(route[3] * 60.0):
+			frames += 1
 			await get_tree().physics_frame
 			if _i % 15 == 0 and OS.has_environment("TRACE_ROUTES"):
 				print("TRACE %s %.2f %s v=%s suelo=%s" % [route[0], _i / 60.0, marble.global_position.snapped(Vector3.ONE * 0.01), marble.linear_velocity.snapped(Vector3.ONE * 0.1), marble.is_grounded()])
@@ -520,7 +524,14 @@ func _check_coaster_routes() -> void:
 		if not reached:
 			_failures.append("nivel 10, %s: acaba en %s" % [route[0], pos.snapped(Vector3.ONE * 0.1)])
 		else:
-			print("SMOKE nivel 10, %s: bien (%s)" % [route[0], pos.snapped(Vector3.ONE * 0.1)])
+			print("SMOKE nivel 10, %s: bien en %.1f s (%s)" % [route[0], frames / 60.0, pos.snapped(Vector3.ONE * 0.1)])
+		if route[0] != "catapulta":
+			run_time += frames / 60.0
+	# Las tres estrellas, a tiro: a ciegas (sin atajos ni girar bien) ya se baja de su tiempo.
+	var stars: Array = GameState.LEVELS[9].stars
+	print("SMOKE nivel 10: recorrido a ciegas en %.1f s (estrellas %s)" % [run_time, stars])
+	if run_time > stars[0]:
+		_failures.append("nivel 10: a ciegas tarda %.1f s, más que las tres estrellas (%s)" % [run_time, stars[0]])
 	marble.free()
 	camera.free()
 	level.free()
