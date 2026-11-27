@@ -91,7 +91,7 @@ func _ready() -> void:
 	level.marble = marble
 	add_child(level)
 	level.build()
-	level.checkpoint_reached.connect(func(pos: Vector3) -> void: respawn_point = pos)
+	level.checkpoint_reached.connect(_on_checkpoint)
 	level.marble_killed.connect(_on_marble_killed)
 	level.marble_caught.connect(func(reason: String) -> void:
 		if state == State.PLAYING:
@@ -888,6 +888,41 @@ func _on_calibrate_pressed() -> void:
 
 
 ## Duración 0 = el mensaje se queda en pantalla.
+## Plataforma nueva pisada: ahí reaparecerás. Si cambia el sitio (y no es la salida), un
+## anillo se abre sobre ella para que se note.
+func _on_checkpoint(pos: Vector3) -> void:
+	var moved := pos.distance_to(respawn_point) > 0.5
+	respawn_point = pos
+	if moved and state == State.PLAYING and pos.distance_to(level.spawn_point) > 0.5:
+		_flash_checkpoint(pos)
+
+
+func _flash_checkpoint(pos: Vector3) -> MeshInstance3D:
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.85
+	ring.outer_radius = 1.0
+	ring.rings = 24
+	ring.ring_segments = 6
+	var glow := StandardMaterial3D.new()
+	glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	glow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	glow.albedo_color = Color(0.55, 1.0, 0.9, 0.8)
+	ring.material = glow
+	var flash := MeshInstance3D.new()
+	flash.mesh = ring
+	flash.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	flash.set_meta("checkpoint_flash", true)
+	level.add_child(flash)
+	# El punto de control está 1 m por encima del suelo de la plataforma.
+	flash.global_position = pos + Vector3(0, -0.9, 0)
+	flash.scale = Vector3(0.6, 0.3, 0.6)
+	var tween := flash.create_tween().set_parallel()
+	tween.tween_property(flash, "scale", Vector3(2.4, 0.3, 2.4), 0.6).set_ease(Tween.EASE_OUT).set_trans(Tween.TRANS_CUBIC)
+	tween.tween_property(glow, "albedo_color:a", 0.0, 0.6)
+	tween.chain().tween_callback(flash.queue_free)
+	return flash
+
+
 func _show_message(text: String, duration: float) -> void:
 	message_label.text = text
 	message_label.visible = true

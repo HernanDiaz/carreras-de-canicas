@@ -850,6 +850,23 @@ func _check_level(index: int) -> void:
 	add_child(game)
 	var marble: Marble = game.marble
 	if index == 0:
+		# Punto de control: anillo solo si cambia el sitio y no es la salida.
+		var saved_state: int = game.state
+		game.state = game.State.PLAYING
+		var flashes := func() -> int:
+			return game.level.find_children("*", "MeshInstance3D", true, false).filter(
+				func(n: Node) -> bool: return n.has_meta("checkpoint_flash") and not n.is_queued_for_deletion()).size()
+		var start: Vector3 = game.level.spawn_point
+		game._on_checkpoint(start)
+		var at_start: int = flashes.call()
+		game._on_checkpoint(start + Vector3(0, 0, -10))
+		var moved: int = flashes.call()
+		game._on_checkpoint(start + Vector3(0, 0, -10))
+		var same: int = flashes.call()
+		game.state = saved_state
+		if at_start != 0 or moved != 1 or same != 1 or game.respawn_point != start + Vector3(0, 0, -10):
+			_failures.append("punto de control: anillos en salida %d, al cambiar %d, mismo sitio %d" % [at_start, moved, same])
+		game.respawn_point = start
 		# El contador redondea hacia arriba: rojo solo cuando ya marca menos de 10.
 		# Pista al salir: en el PC (sin sensor) la del ratón; en carrera ninguna.
 		if game._start_hint() != "
