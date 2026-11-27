@@ -756,6 +756,10 @@ func _check_camera_lead() -> void:
 		_failures.append("cámara: shake() no mueve la cámara")
 	if camera.h_offset != 0.0 or camera.v_offset != 0.0:
 		_failures.append("cámara: el temblor no se apaga (%s, %s)" % [camera.h_offset, camera.v_offset])
+	# Zoom con la velocidad: igual parado y despacio, más lejos deprisa, con tope.
+	var zooms := [camera.zoom_for(0.0), camera.zoom_for(camera.zoom_from), camera.zoom_for(12.0), camera.zoom_for(40.0)]
+	if zooms[0] != camera._base_size or zooms[1] != zooms[0] or zooms[2] <= zooms[0] 			or not is_equal_approx(zooms[3], camera._base_size + camera.speed_zoom):
+		_failures.append("cámara: zoom con la velocidad %s" % [zooms])
 	# Con la opción de temblor quitada, shake() no hace nada.
 	GameState.camera_shake = false
 	camera.shake(1.0)

@@ -12,8 +12,25 @@ extends Camera3D
 @export var max_shake := 0.18
 @export var shake_time := 0.35
 
+## A mucha velocidad la cámara se aleja un poco (más tamaño ortográfico) para ver lo que
+## viene: nada hasta zoom_from m/s y speed_zoom metros más a zoom_to m/s o más.
+@export var speed_zoom := 2.5
+@export var zoom_from := 8.0
+@export var zoom_to := 16.0
+@export var zoom_smoothing := 1.5
+
 var target: Node3D
 var _shake := 0.0
+var _base_size := 0.0
+
+
+func _ready() -> void:
+	_base_size = size
+
+
+## Tamaño ortográfico que toca a la velocidad `speed`.
+func zoom_for(speed: float) -> float:
+	return _base_size + speed_zoom * clampf((speed - zoom_from) / (zoom_to - zoom_from), 0.0, 1.0)
 
 
 ## Temblor corto (0..1). Usa h_offset/v_offset, así no estorba al seguimiento ni al adelanto.
@@ -33,6 +50,9 @@ func _process(delta: float) -> void:
 		return
 	var desired := target.global_position + offset + _lead()
 	global_position = global_position.lerp(desired, 1.0 - exp(-smoothing * delta))
+	var body := target as RigidBody3D
+	var speed := body.linear_velocity.length() if body != null and not body.freeze else 0.0
+	size = lerpf(size, zoom_for(speed), 1.0 - exp(-zoom_smoothing * delta))
 
 
 func _lead() -> Vector3:
