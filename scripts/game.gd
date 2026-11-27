@@ -311,6 +311,7 @@ func _update_goal(delta: float) -> void:
 		if _goal_hold >= GOAL_HOLD_TIME:
 			level.set_goal_progress(1.0)
 			marble.celebrate(level.goal_center)
+			_confetti(level.goal_center)
 			_finish(true)
 			return
 		var left := ceili(GOAL_HOLD_TIME - _goal_hold)
@@ -891,6 +892,49 @@ func _on_calibrate_pressed() -> void:
 
 
 ## Duración 0 = el mensaje se queda en pantalla.
+## Lluvia de confeti de colores sobre la meta al terminar.
+func _confetti(center: Vector3) -> CPUParticles3D:
+	var piece := BoxMesh.new()
+	piece.size = Vector3(0.26, 0.02, 0.16)
+	var paper := StandardMaterial3D.new()
+	paper.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	paper.vertex_color_use_as_albedo = true
+	paper.cull_mode = BaseMaterial3D.CULL_DISABLED
+	piece.material = paper
+	var colors := Gradient.new()
+	colors.interpolation_mode = Gradient.GRADIENT_INTERPOLATE_CONSTANT
+	colors.offsets = PackedFloat32Array([0.0, 0.2, 0.4, 0.6, 0.8])
+	colors.colors = PackedColorArray([Color(1.0, 0.35, 0.75), Color(0.35, 1.0, 1.0),
+		Color(1.0, 0.85, 0.2), Color(0.55, 1.0, 0.45), Color(0.7, 0.5, 1.0)])
+	var burst := CPUParticles3D.new()
+	burst.mesh = piece
+	burst.amount = 80
+	burst.lifetime = 2.2
+	burst.one_shot = true
+	burst.explosiveness = 0.9
+	burst.local_coords = false
+	burst.direction = Vector3.UP
+	burst.spread = 35.0
+	burst.initial_velocity_min = 6.0
+	burst.initial_velocity_max = 9.0
+	burst.gravity = Vector3(0, -6.0, 0)
+	burst.damping_min = 1.0
+	burst.damping_max = 2.0
+	burst.angular_velocity_min = -540.0
+	burst.angular_velocity_max = 540.0
+	burst.angle_min = 0.0
+	burst.angle_max = 360.0
+	burst.particle_flag_rotate_y = true
+	burst.color_initial_ramp = colors
+	burst.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	burst.set_meta("confetti", true)
+	level.add_child(burst)
+	burst.global_position = center + Vector3(0, 0.6, 0)
+	burst.emitting = true
+	burst.finished.connect(burst.queue_free)
+	return burst
+
+
 ## Plataforma nueva pisada: ahí reaparecerás. Si cambia el sitio (y no es la salida), un
 ## anillo se abre sobre ella para que se note.
 func _on_checkpoint(pos: Vector3) -> void:

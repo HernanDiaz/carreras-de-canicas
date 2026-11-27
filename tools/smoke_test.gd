@@ -854,6 +854,11 @@ func _check_level(index: int) -> void:
 		await get_tree().process_frame
 		if game.calibrate_button.visible:
 			_failures.append("sin sensor no debe salir el botón de recalibrar")
+		# Confeti en la meta: sale de la meta, de una vez, y se borra solo.
+		var burst: CPUParticles3D = game._confetti(game.level.goal_center)
+		if not burst.one_shot or not burst.emitting or burst.get_parent() != game.level 				or burst.global_position.distance_to(game.level.goal_center) > 1.0:
+			_failures.append("confeti: no sale de la meta")
+		burst.free()
 		# Punto de control: anillo solo si cambia el sitio y no es la salida.
 		var saved_state: int = game.state
 		game.state = game.State.PLAYING
