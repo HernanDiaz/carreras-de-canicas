@@ -385,10 +385,23 @@ def make_launch():
     save("launch", fade((air * 0.5 + spring) * env, rate, 0.001, 0.06), rate, 0.75)
 
 
+def make_checkpoint():
+    # Campanita suave de dos notas (mi y si agudos): punto de control nuevo.
+    rate = SFX_RATE
+    t = t_axis(0.4, rate)
+    out = np.zeros_like(t)
+    for start, freq in [(0.0, 1318.5), (0.07, 1975.5)]:
+        k = np.clip(t - start, 0, None)
+        on = (t >= start).astype(float)
+        tone = np.sin(2 * np.pi * freq * k) + 0.25 * np.sin(2 * np.pi * freq * 2 * k)
+        out += tone * on * np.minimum(k / 0.004, 1) * np.exp(-k * 11)
+    save("checkpoint", fade(out * 0.5, rate, 0.001, 0.05), rate, 0.45)
+
+
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     for make in [make_roll, make_hit, make_land, make_fall, make_zap, make_respawn, make_beeps,
                  make_tick, make_win, make_lose, make_star, make_click, make_achievement,
-                 make_music_menu, make_music_game, make_launch]:
+                 make_music_menu, make_music_game, make_launch, make_checkpoint]:
         make()
     print("Sonidos generados en", os.path.normpath(OUT))

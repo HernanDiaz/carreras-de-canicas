@@ -19,6 +19,7 @@ const SOUNDS := {
 	click = preload("res://sounds/click.wav"),
 	achievement = preload("res://sounds/achievement.wav"),
 	launch = preload("res://sounds/launch.wav"),
+	checkpoint = preload("res://sounds/checkpoint.wav"),
 }
 const MUSIC := {
 	menu = preload("res://sounds/music_menu.wav"),
