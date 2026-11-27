@@ -249,15 +249,22 @@ func _on_joy_connection_changed(_device: int, connected: bool) -> void:
 		_pause()
 
 
-## Pista de controles al salir en el nivel 1: en el PC siempre (ratón, flechas o WASD); en el
-## móvil solo hasta que lo superas por primera vez.
+## Pista al salir. Nivel 1: los controles (en el PC siempre: ratón, flechas o WASD; en el
+## móvil solo hasta que lo superas). Otros niveles: su consejo ("tip"), hasta superarlo.
 func _start_hint() -> String:
-	if GameState.current_level != 0 or race:
+	if race:
 		return ""
-	if not tilt_simulator.has_real_sensor():
-		return "\n" + tr("MOUSE_HINT")
-	if not GameState.best_times.has(0):
-		return "\n" + tr("TILT_HINT")
+	var index := GameState.current_level
+	if index == 0:
+		if not tilt_simulator.has_real_sensor():
+			return "\n" + tr("MOUSE_HINT")
+		if not GameState.best_times.has(0):
+			return "\n" + tr("TILT_HINT")
+		return ""
+	# Consejo del nivel (piezas nuevas) hasta que lo superas por primera vez.
+	var tip: String = GameState.LEVELS[index].get("tip", "")
+	if tip != "" and not GameState.best_times.has(index):
+		return "\n" + tr(tip)
 	return ""
 
 

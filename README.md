@@ -54,6 +54,8 @@ levels/level_01.gd ...     Un script por nivel
 | 9 | La gran torre | Barriles rodando, ascensor, torres, medio tubo y meta en un disco giratorio |
 | 10 | Montaña rusa | Tobogán de bajada con curvas, trampolín sobre el vacío, catapulta, medio tubo y salto final a la meta |
 
+Un nivel puede llevar un consejo (`tip` en `GameState.LEVELS`, una clave de traducción) que sale con el "¡Ya!" hasta que lo superas por primera vez.
+
 Superar un nivel desbloquea el siguiente. El progreso y los récords se guardan en `user://progreso.cfg`.
 
 **Estrellas:** terminar da 1 estrella; bajar de los dos tiempos de `stars` de cada nivel (en `game_state.gd`) da la 2.ª y la 3.ª.
