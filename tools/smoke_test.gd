@@ -887,12 +887,15 @@ func _check_level(index: int) -> void:
 		var tip_before: String = game._start_hint()
 		GameState.best_times[9] = 30.0
 		var tip_after: String = game._start_hint()
-		GameState.current_level = 2
-		var no_tip: String = game._start_hint()
 		GameState.current_level = 0
 		GameState.best_times = saved_best
-		if tip_before != "\n" + tr("LEVEL_10_TIP") or tip_after != "" or no_tip != "":
-			_failures.append("consejo de nivel: antes %s, después %s, sin consejo %s" % [tip_before, tip_after, no_tip])
+		if tip_before != "\n" + tr("LEVEL_10_TIP") or tip_after != "":
+			_failures.append("consejo de nivel: antes %s, después %s" % [tip_before, tip_after])
+		# Todos los niveles menos el primero (que explica los controles) llevan consejo traducido.
+		for i in range(1, GameState.LEVELS.size()):
+			var key: String = GameState.LEVELS[i].get("tip", "")
+			if key == "" or tr(key) == key:
+				_failures.append("nivel %d: sin consejo (%s)" % [i + 1, key])
 		# Los avisos grandes (¡Ya! + pista, nombre del nivel) caben en pantalla en todos los idiomas.
 		var label: Label = game.message_label
 		for locale in TranslationServer.get_loaded_locales():

@@ -18,13 +18,13 @@ signal progress_changed
 const LEVELS := [
 	{name = "LEVEL_1", script = "res://levels/level_01.gd", time = 60.0, stars = [25.0, 38.0]},
 	{name = "LEVEL_2", script = "res://levels/level_02.gd", time = 60.0, stars = [42.0, 52.0], tip = "LEVEL_2_TIP"},
-	{name = "LEVEL_3", script = "res://levels/level_03.gd", time = 75.0, stars = [22.0, 35.0]},
+	{name = "LEVEL_3", script = "res://levels/level_03.gd", time = 75.0, stars = [22.0, 35.0], tip = "LEVEL_3_TIP"},
 	{name = "LEVEL_4", script = "res://levels/level_04.gd", time = 75.0, stars = [34.0, 50.0], tip = "LEVEL_4_TIP"},
 	{name = "LEVEL_5", script = "res://levels/level_05.gd", time = 80.0, stars = [29.0, 45.0], tip = "LEVEL_5_TIP"},
 	{name = "LEVEL_6", script = "res://levels/level_06.gd", time = 100.0, stars = [70.0, 85.0], tip = "LEVEL_6_TIP"},
-	{name = "LEVEL_7", script = "res://levels/level_07.gd", time = 120.0, stars = [80.0, 100.0]},
+	{name = "LEVEL_7", script = "res://levels/level_07.gd", time = 120.0, stars = [80.0, 100.0], tip = "LEVEL_7_TIP"},
 	{name = "LEVEL_8", script = "res://levels/level_08.gd", time = 100.0, stars = [50.0, 70.0], tip = "LEVEL_8_TIP"},
-	{name = "LEVEL_9", script = "res://levels/level_09.gd", time = 140.0, stars = [52.0, 85.0]},
+	{name = "LEVEL_9", script = "res://levels/level_09.gd", time = 140.0, stars = [52.0, 85.0], tip = "LEVEL_9_TIP"},
 	# Tiempos provisionales: hay que ajustarlos jugándolo en el móvil.
 	{name = "LEVEL_10", script = "res://levels/level_10.gd", time = 60.0, stars = [24.0, 36.0], tip = "LEVEL_10_TIP"},
 ]

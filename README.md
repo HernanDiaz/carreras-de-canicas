@@ -54,7 +54,7 @@ levels/level_01.gd ...     Un script por nivel
 | 9 | La gran torre | Barriles rodando, ascensor, torres, medio tubo y meta en un disco giratorio |
 | 10 | Montaña rusa | Tobogán de bajada con curvas, trampolín sobre el vacío, catapulta, medio tubo y salto final a la meta |
 
-Un nivel puede llevar un consejo (`tip` en `GameState.LEVELS`, una clave de traducción) que sale con el "¡Ya!" hasta que lo superas por primera vez. Lo llevan los niveles que estrenan un peligro: 2 (hielo), 4 (canicas de acero), 5 (baldosas que se hunden), 6 (ácido), 8 (viento) y 10 (trampolín). En la pausa el consejo sale siempre, debajo del nombre del nivel.
+Un nivel puede llevar un consejo (`tip` en `GameState.LEVELS`, una clave de traducción) que sale con el "¡Ya!" hasta que lo superas por primera vez. Lo llevan todos menos el 1 (que explica los controles), cada uno sobre su peligro nuevo. En la pausa el consejo sale siempre, debajo del nombre del nivel.
 
 Superar un nivel desbloquea el siguiente. El progreso y los récords se guardan en `user://progreso.cfg`.
 
