@@ -862,7 +862,7 @@ func _check_level(index: int) -> void:
 		var tip_before: String = game._start_hint()
 		GameState.best_times[9] = 30.0
 		var tip_after: String = game._start_hint()
-		GameState.current_level = 4
+		GameState.current_level = 2
 		var no_tip: String = game._start_hint()
 		GameState.current_level = 0
 		GameState.best_times = saved_best
@@ -872,12 +872,16 @@ func _check_level(index: int) -> void:
 		var label: Label = game.message_label
 		for locale in TranslationServer.get_loaded_locales():
 			TranslationServer.set_locale(locale)
-			for text in [tr("GO") + "
+			var texts: Array[String] = [tr("GO") + "
 " + tr("MOUSE_HINT"), tr("GO") + "
-" + tr("TILT_HINT"), tr("GO") + "
-" + tr("LEVEL_10_TIP"),
+" + tr("TILT_HINT"),
 					"%s
-3" % tr(GameState.LEVELS[8].name), tr("HOLD_FMT") % 3]:
+3" % tr(GameState.LEVELS[8].name), tr("HOLD_FMT") % 3]
+			for level_info: Dictionary in GameState.LEVELS:
+				if level_info.has("tip"):
+					texts.append(tr("GO") + "
+" + tr(level_info.tip))
+			for text in texts:
 				label.text = text
 				label.size = Vector2(label.offset_right - label.offset_left, 0.0)
 				var need := Vector2(maxf(label.size.x, label.get_minimum_size().x), label.get_minimum_size().y)
