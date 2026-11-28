@@ -52,7 +52,7 @@ levels/level_01.gd ...     Un script por nivel
 | 7 | La fábrica | Cintas transportadoras, prensas, disco giratorio, gusanos, valle, baches, tobogán en espiral |
 | 8 | Vendaval | Rachas de viento, balancines, cresta estrecha, laberinto |
 | 9 | La gran torre | Barriles rodando, ascensor, torres, medio tubo y meta en un disco giratorio |
-| 10 | Montaña rusa | Tobogán de bajada con curvas, trampolín sobre el vacío, catapulta, medio tubo y salto final a la meta |
+| 10 | Montaña rusa | Tobogán de bajada con curvas, trampolín sobre el vacío, catapulta, medio tubo, espiral de dos vueltas (o atajo por un puente estrecho hasta otra catapulta), colinas para despegar y curva peraltada sin paredes hasta la meta |
 
 Un nivel puede llevar un consejo (`tip` en `GameState.LEVELS`, una clave de traducción) que sale con el "¡Ya!" hasta que lo superas por primera vez. Lo llevan todos menos el 1 (que explica los controles), cada uno sobre su peligro nuevo. En la pausa el consejo sale siempre, debajo del nombre del nivel.
 

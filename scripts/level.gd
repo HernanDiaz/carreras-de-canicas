@@ -736,6 +736,56 @@ func add_spiral(entry: Vector3, dir: Vector3, radius: float, turns: float, drop:
 	return {position = finish, direction = out_dir}
 
 
+## Curva peraltada sin paredes alrededor de `center` (a la altura de su entrada), de radio
+## `radius` y ancho `width`: va del ángulo `from_angle` a `to_angle` (radianes; 0 es +z y
+## PI/2 es +x) bajando `drop`. El borde de fuera queda más alto (`bank_degrees`), así que
+## a la velocidad justa la curva te lleva; demasiado rápido sales por fuera y demasiado
+## lento caes por dentro, al hueco del centro.
+func add_banked_curve(center: Vector3, radius: float, from_angle: float, to_angle: float, width: float, bank_degrees: float, drop := 0.0) -> void:
+	var bank := deg_to_rad(bank_degrees)
+	var half := width / 2.0
+	var steps := maxi(int(absf(to_angle - from_angle) / 0.06), 4)
+	var inners: Array[Vector3] = []
+	var outers: Array[Vector3] = []
+	for i in steps + 1:
+		var t := float(i) / steps
+		var angle := lerpf(from_angle, to_angle, t)
+		var out := Vector3(sin(angle), 0.0, cos(angle))
+		var mid := center + out * radius + Vector3.DOWN * drop * t
+		# Entra y sale plana (para empalmar con plataformas) y se inclina en el medio.
+		var tilt := bank * smoothstep(0.0, 0.2, minf(t, 1.0 - t))
+		inners.append(mid - out * half * cos(tilt) + Vector3.DOWN * half * sin(tilt))
+		outers.append(mid + out * half * cos(tilt) + Vector3.UP * half * sin(tilt))
+	var tool := SurfaceTool.new()
+	tool.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var faces := PackedVector3Array()
+	var unused := PackedVector3Array()
+	for i in steps:
+		var a := inners[i]
+		var b := inners[i + 1]
+		var c := outers[i + 1]
+		var d := outers[i]
+		var n := (d - a).cross(b - a).normalized()
+		if n.y < 0.0:
+			n = -n
+		# Las dos caras se dibujan (desde abajo también se ve), pero chocar solo una vez.
+		_add_quad(tool, faces, [a, b, c, d], n)
+		_add_quad(tool, unused, [a, d, c, b], n)
+	var body := StaticBody3D.new()
+	var shape := ConcavePolygonShape3D.new()
+	shape.set_faces(faces)
+	shape.backface_collision = true
+	var collision := CollisionShape3D.new()
+	collision.shape = shape
+	body.add_child(collision)
+	tool.set_material(_track_material(Vector3.ONE * 1000.0, S_CHUTE))
+	var instance := MeshInstance3D.new()
+	instance.mesh = tool.commit()
+	body.add_child(instance)
+	add_child(body)
+	lowest_y = minf(lowest_y, center.y - drop - half)
+
+
 ## Dos triángulos con la misma normal; también los añade a `faces` (colisión).
 func _add_quad(tool: SurfaceTool, faces: PackedVector3Array, corners: Array, normal: Vector3) -> void:
 	for index in [0, 1, 2, 0, 2, 3]:

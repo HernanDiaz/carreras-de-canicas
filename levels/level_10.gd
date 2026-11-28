@@ -1,6 +1,7 @@
 extends Level
 ## Nivel 10 · Montaña rusa: un tobogán de bajada con curvas, salto de trampolín sobre el vacío,
-## una catapulta que te lanza a lo alto, un medio tubo de bajada y un último salto a la meta.
+## una catapulta que te lanza a lo alto, un medio tubo de bajada, una espiral (o un atajo por
+## un puente estrecho y otra catapulta), colinas para despegar y una curva peraltada hasta la meta.
 ## Todo va de velocidad: si llegas lento al trampolín, no pasas.
 
 
@@ -38,9 +39,26 @@ func build() -> void:
 	# Bajada por un medio tubo hacia el este (el fondo del surco baja de -11 a -17)
 	add_valley(Vector3(4, -9, -88), Vector3(24, -15, -88), 6.0, 2.0)
 	add_platform(Vector3(28, -17, -88), Vector3(8, 2, 8))
-	add_jump_pad(Vector3(31.2, -17, -88), Vector3.RIGHT, 9.0, 5.0)
 
-	# Isla de la meta al otro lado del último salto
-	add_platform(Vector3(41, -17, -88), Vector3(8, 2, 8))
-	add_block(Vector3(45.25, -16.2, -88), Vector3(0.5, 0.8, 8.5), S_WALL)
-	add_goal(Vector3(41, -17, -88))
+	# Atajo arriesgado: un puente estrecho y sin barandillas lleva a otra catapulta que se
+	# salta la espiral y te deja directamente en las colinas.
+	add_ramp(Vector3(28, -17, -92), Vector3(28, -17, -97.5), 1.1, S_BRIDGE)
+	add_platform(Vector3(28, -17, -99.5), Vector3(3.4, 2, 4))
+	add_catapult(Vector3(28, -17, -100), Vector3(45, -31, -90), 1.6, 2.4)
+
+	# Espiral de dos vueltas: el camino seguro, más largo
+	add_spiral(Vector3(32, -17, -88), Vector3.RIGHT, 4.0, 2.0, 14.0, true, 5.0, 3.0)
+
+	# Colinas: el acelerador te lanza y en cada cresta la canica despega un poco
+	add_platform(Vector3(46, -31, -89), Vector3(8, 2, 10))
+	add_boost(Vector3(48.5, -31, -88), Vector3.RIGHT, 5.0)
+	add_waves(Vector3(50, -31, -88), Vector3(68, -31, -88), 4.0, 3, 1.1)
+	add_platform(Vector3(72, -31, -88), Vector3(8, 2, 8))
+
+	# Curva peraltada de media vuelta, sin paredes y con el hueco en medio
+	add_banked_curve(Vector3(76, -31, -96), 8.0, 0.0, PI, 3.6, 22.0, 1.5)
+
+	# Meta al salir de la curva
+	add_platform(Vector3(72, -32.5, -104), Vector3(8, 2, 8))
+	add_block(Vector3(67.75, -31.7, -104), Vector3(0.5, 0.8, 8.5), S_WALL)
+	add_goal(Vector3(71, -32.5, -104))

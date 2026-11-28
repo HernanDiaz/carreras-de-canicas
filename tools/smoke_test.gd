@@ -477,9 +477,42 @@ func _check_catapult_aim() -> void:
 		_failures.append("catapulta: el tiro acaba en %s (debe %s)" % [end, to])
 
 
+## Inclina como el mando: x a la derecha, y hacia delante (la cámara de la prueba mira a -z).
+func _steer(v: Vector2) -> void:
+	for pair in [["ui_right", v.x], ["ui_left", -v.x], ["ui_up", v.y], ["ui_down", -v.y]]:
+		if pair[1] > 0.01:
+			Input.action_press(pair[0], minf(pair[1], 1.0))
+		else:
+			Input.action_release(pair[0])
+
+
+## Piloto de la espiral del nivel 10 (eje en (37, -84), radio 4): entra, sigue la vuelta a
+## unos 7 m/s y al salir empuja hacia las colinas.
+func _steer_spiral(p: Vector3, v: Vector3) -> Vector2:
+	if (p.x < 36.0 and p.y > -17.3 and p.z > -89.0) or p.y < -30.0:
+		return Vector2(1, 0)
+	var r := Vector3(p.x - 37.0, 0.0, p.z + 84.0)
+	var want := r.cross(Vector3.UP).normalized() * 7.0 + r.normalized() * (4.0 - r.length()) * 2.0
+	var push := (want - Vector3(v.x, 0.0, v.z)) * 0.4
+	return Vector2(push.x, -push.z).limit_length(1.0)
+
+
+## Piloto de la curva peraltada del nivel 10: busca unos 5-6 m/s hacia la curva, por el arco
+## (centro (76, -96), radio 8) y al salir, hacia la meta (a -x).
+func _steer_banked_curve(p: Vector3, v: Vector3) -> Vector2:
+	var want := Vector3.RIGHT * 5.0
+	if p.x < 76.0 and p.z < -100.0:
+		want = Vector3.LEFT * 4.0
+	elif p.x >= 76.0 or p.z <= -92.0:
+		var r := Vector3(p.x - 76.0, 0.0, p.z + 96.0)
+		want = Vector3(r.z, 0.0, -r.x).normalized() * 6.0 + r.normalized() * (8.0 - r.length()) * 2.0
+	var push := (want - Vector3(v.x, 0.0, v.z)) * 0.4
+	return Vector2(push.x, -push.z).limit_length(1.0)
+
+
 ## Nivel 10 (Montaña rusa) recorrido a ciegas, tramo a tramo: inclinando hacia delante se baja
-## por el tobogán, se pasa el trampolín y la catapulta te sube; el medio tubo te deja abajo y
-## el último salto llega a la meta.
+## por el tobogán, se pasa el trampolín y la catapulta te sube; el medio tubo te deja abajo, la
+## espiral (o el atajo) en las colinas, y siguiendo la curva peraltada se llega a la meta.
 func _check_coaster_routes() -> void:
 	var level: Level = load("res://levels/level_10.gd").new()
 	var marble: Marble = load("res://scenes/marble.tscn").instantiate()
@@ -493,14 +526,14 @@ func _check_coaster_routes() -> void:
 	marble.release()
 	var goal := level.goal_center
 	var marks := level.find_children("*", "MeshInstance3D", true, false).filter(func(n: Node) -> bool: return n.has_meta("catapult_target"))
-	if marks.size() != 1 or (marks[0] as Node3D).position.distance_to(Vector3(0, -8.95, -86)) > 0.01:
+	if marks.size() != 2 or (marks[0] as Node3D).position.distance_to(Vector3(0, -8.95, -86)) > 0.01:
 		_failures.append("catapulta: la diana del aterrizaje no está donde cae (%s)" % [marks])
 	# El arco de puntos sube y baja: el punto más alto queda por encima de la salida y de la diana.
 	var arc := level.find_children("*", "MeshInstance3D", true, false).filter(func(n: Node) -> bool: return n.has_meta("catapult_arc"))
 	var top := -INF
 	for d: Node3D in arc:
 		top = maxf(top, d.position.y)
-	if arc.size() != Level.CATAPULT_DOTS - 1 or top < -8.4:
+	if arc.size() != 2 * (Level.CATAPULT_DOTS - 1) or top < -8.4:
 		_failures.append("catapulta: arco de %d puntos, el más alto a %.1f" % [arc.size(), top])
 	# [nombre, salida, acción, segundos, comprobación]
 	var routes := [
@@ -509,35 +542,48 @@ func _check_coaster_routes() -> void:
 		["catapulta", Vector3(0, -14, -62), "ui_up", 6.0,
 			func(p: Vector3) -> bool: return p.z < -83.5 and p.y > -9.6 and absf(p.x) < 4.0],
 		["medio tubo", Vector3(2, -8, -88), "ui_right", 8.0,
-			func(p: Vector3) -> bool: return p.distance_to(goal - Vector3(13, 0, 0)) < 4.0 and p.y > goal.y - 0.6],
-		["último salto", goal + Vector3(-12, 1, 0), "ui_right", 6.0,
+			func(p: Vector3) -> bool: return p.distance_to(Vector3(28, -16.5, -88)) < 3.5 and p.y > -17.6],
+		# Espiral: un empujón para entrar y luego la gravedad la baja sola.
+		["espiral", Vector3(28, -16, -88), _steer_spiral, 14.0,
+			func(p: Vector3) -> bool: return p.x > 43.0 and p.y > -30.7 and absf(p.z + 89.0) < 5.0],
+		# Atajo por el puente estrecho: la catapulta te deja en las colinas (alternativa a la espiral).
+		["atajo", Vector3(28, -16, -89), "ui_up", 8.0,
+			func(p: Vector3) -> bool: return p.x > 42.0 and p.x < 50.0 and absf(p.z + 89.0) < 5.0 and p.y > -30.7 and p.y < -30.0],
+		["colinas", Vector3(44, -30, -88), "ui_right", 8.0,
+			func(p: Vector3) -> bool: return p.x > 69.0 and p.y > -30.7 and absf(p.z + 88.0) < 4.0],
+		["curva peraltada", Vector3(70, -30, -88), _steer_banked_curve, 14.0,
 			func(p: Vector3) -> bool: return Vector2(p.x - goal.x, p.z - goal.z).length() < 3.5 and absf(p.y - goal.y - 0.5) < 0.15],
 	]
-	# Tiempo del recorrido entero (sin el tramo "catapulta", que repite parte del primero).
+	# Tiempo del recorrido entero (sin el tramo "catapulta", que repite parte del primero, ni el
+	# atajo, que es la alternativa a la espiral).
 	var run_time := 0.0
 	for route in routes:
 		marble.respawn(route[1])
 		await get_tree().physics_frame
-		if route[2] != "":
+		if route[2] is String and route[2] != "":
 			Input.action_press(route[2])
 		var reached := false
 		var frames := 0
 		for _i in int(route[3] * 60.0):
 			frames += 1
+			if route[2] is Callable:
+				_steer(route[2].call(marble.global_position, marble.linear_velocity))
 			await get_tree().physics_frame
 			if _i % 15 == 0 and OS.has_environment("TRACE_ROUTES"):
 				print("TRACE %s %.2f %s v=%s suelo=%s" % [route[0], _i / 60.0, marble.global_position.snapped(Vector3.ONE * 0.01), marble.linear_velocity.snapped(Vector3.ONE * 0.1), marble.is_grounded()])
 			if route[4].call(marble.global_position):
 				reached = true
 				break
-		if route[2] != "":
+		if route[2] is String and route[2] != "":
 			Input.action_release(route[2])
+		elif route[2] is Callable:
+			_steer(Vector2.ZERO)
 		var pos := marble.global_position
 		if not reached:
 			_failures.append("nivel 10, %s: acaba en %s" % [route[0], pos.snapped(Vector3.ONE * 0.1)])
 		else:
 			print("SMOKE nivel 10, %s: bien en %.1f s (%s)" % [route[0], frames / 60.0, pos.snapped(Vector3.ONE * 0.1)])
-		if route[0] != "catapulta":
+		if route[0] != "catapulta" and route[0] != "atajo":
 			run_time += frames / 60.0
 	# Las tres estrellas, a tiro: a ciegas (sin atajos ni girar bien) ya se baja de su tiempo.
 	var stars: Array = GameState.LEVELS[9].stars

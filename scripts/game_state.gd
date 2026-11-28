@@ -26,7 +26,7 @@ const LEVELS := [
 	{name = "LEVEL_8", script = "res://levels/level_08.gd", time = 100.0, stars = [50.0, 70.0], tip = "LEVEL_8_TIP"},
 	{name = "LEVEL_9", script = "res://levels/level_09.gd", time = 140.0, stars = [52.0, 85.0], tip = "LEVEL_9_TIP"},
 	# Tiempos provisionales: hay que ajustarlos jugándolo en el móvil.
-	{name = "LEVEL_10", script = "res://levels/level_10.gd", time = 60.0, stars = [24.0, 36.0], tip = "LEVEL_10_TIP"},
+	{name = "LEVEL_10", script = "res://levels/level_10.gd", time = 100.0, stars = [45.0, 65.0], tip = "LEVEL_10_TIP"},
 ]
 
 ## Idiomas disponibles (columnas de locale/translations.csv). "" = el del sistema.
